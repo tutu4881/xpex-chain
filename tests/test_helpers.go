@@ -16,7 +16,7 @@ import (
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	"github.com/cosmos/cosmos-sdk/types/module/testutil"
 
-	example "github.com/cosmos/example"
+	example "github.com/tutu787878/xpex-chain"
 )
 
 // NewTestNetworkFixture returns a new ExampleApp network fixture for e2e tests.

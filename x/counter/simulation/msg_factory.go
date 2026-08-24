@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/cosmos/cosmos-sdk/testutil/simsx"
-	"github.com/cosmos/example/x/counter/types"
+	"github.com/tutu787878/xpex-chain/x/counter/types"
 )
 
 // MsgAddFactory creates a simulation message factory for MsgAddRequest.

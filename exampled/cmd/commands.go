@@ -6,7 +6,7 @@ import (
 
 	cmtcfg "github.com/cometbft/cometbft/config"
 	dbm "github.com/cosmos/cosmos-db"
-	"github.com/cosmos/example"
+	"github.com/tutu787878/xpex-chain"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 

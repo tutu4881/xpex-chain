@@ -2,7 +2,7 @@ package keeper_test
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/example/x/counter/types"
+	"github.com/tutu787878/xpex-chain/x/counter/types"
 )
 
 func (s *KeeperTestSuite) TestQueryCount() {

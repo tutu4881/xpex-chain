@@ -4,7 +4,7 @@ import (
 	"math/rand"
 
 	"github.com/cosmos/cosmos-sdk/types/module"
-	"github.com/cosmos/example/x/counter/types"
+	"github.com/tutu787878/xpex-chain/x/counter/types"
 )
 
 // RandomizedGenState generates a random GenesisState for the counter module.

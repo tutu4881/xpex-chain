@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	meter = otel.Meter("github.com/cosmos/example/x/counter")
+	meter = otel.Meter("github.com/tutu787878/xpex-chain/x/counter")
 
 	countMetric metric.Int64Counter
 )

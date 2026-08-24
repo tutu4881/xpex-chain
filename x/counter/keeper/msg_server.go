@@ -5,7 +5,7 @@ import (
 
 	sdkerrors "cosmossdk.io/errors"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
-	"github.com/cosmos/example/x/counter/types"
+	"github.com/tutu787878/xpex-chain/x/counter/types"
 )
 
 type msgServer struct {

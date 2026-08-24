@@ -5,8 +5,8 @@ import (
 	"os"
 
 	clientv2helpers "cosmossdk.io/client/v2/helpers"
-	"github.com/cosmos/example"
-	"github.com/cosmos/example/exampled/cmd"
+	"github.com/tutu787878/xpex-chain"
+	"github.com/tutu787878/xpex-chain/exampled/cmd"
 
 	svrcmd "github.com/cosmos/cosmos-sdk/server/cmd"
 )

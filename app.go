@@ -65,9 +65,9 @@ import (
 	"github.com/cosmos/gogoproto/proto"
 
 	// counter tutorial app wiring 1: add counter imports below
-	counter "github.com/cosmos/example/x/counter"
-	counterkeeper "github.com/cosmos/example/x/counter/keeper"
-	countertypes "github.com/cosmos/example/x/counter/types"
+	counter "github.com/tutu787878/xpex-chain/x/counter"
+	counterkeeper "github.com/tutu787878/xpex-chain/x/counter/keeper"
+	countertypes "github.com/tutu787878/xpex-chain/x/counter/types"
 )
 
 const (

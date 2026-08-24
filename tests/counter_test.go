@@ -17,7 +17,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authclient "github.com/cosmos/cosmos-sdk/x/auth/client"
 
-	countertypes "github.com/cosmos/example/x/counter/types"
+	countertypes "github.com/tutu787878/xpex-chain/x/counter/types"
 )
 
 type E2ETestSuite struct {

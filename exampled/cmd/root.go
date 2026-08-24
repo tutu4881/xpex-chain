@@ -4,7 +4,7 @@ import (
 	"os"
 
 	dbm "github.com/cosmos/cosmos-db"
-	"github.com/cosmos/example"
+	"github.com/tutu787878/xpex-chain"
 	"github.com/spf13/cobra"
 
 	"cosmossdk.io/log/v2"

@@ -18,8 +18,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	moduletestutil "github.com/cosmos/cosmos-sdk/types/module/testutil"
 
-	"github.com/cosmos/example/x/counter/keeper"
-	"github.com/cosmos/example/x/counter/types"
+	"github.com/tutu787878/xpex-chain/x/counter/keeper"
+	"github.com/tutu787878/xpex-chain/x/counter/types"
 )
 
 // MockBankKeeper is a mock implementation of the BankKeeper interface

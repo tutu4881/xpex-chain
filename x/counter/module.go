@@ -14,9 +14,9 @@ import (
 	simtypes "github.com/cosmos/cosmos-sdk/types/simulation"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 
-	"github.com/cosmos/example/x/counter/keeper"
-	"github.com/cosmos/example/x/counter/simulation"
-	countertypes "github.com/cosmos/example/x/counter/types"
+	"github.com/tutu787878/xpex-chain/x/counter/keeper"
+	"github.com/tutu787878/xpex-chain/x/counter/simulation"
+	countertypes "github.com/tutu787878/xpex-chain/x/counter/types"
 )
 
 var (
