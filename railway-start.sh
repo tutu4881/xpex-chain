@@ -6,7 +6,7 @@ HOME_DIR="/root/.exampleapp"
 mkdir -p "$HOME_DIR/config"
 mkdir -p "$HOME_DIR/data"
 
-echo "Starting XPEX chain..."
+echo "===== XPEX RAILWAY START ====="
 echo "Home: $HOME_DIR"
 
 if [ ! -f "$HOME_DIR/config/genesis.json" ]; then
@@ -24,7 +24,7 @@ chmod 600 "$HOME_DIR/config/priv_validator_key.json"
 
 echo "Validator key installed."
 
-echo "Initializing XPEX configuration..."
+echo "===== INITIALIZING CONFIG ====="
 
 if [ ! -f "$HOME_DIR/config/config.toml" ]; then
     /usr/local/bin/xpexd init XPEX \
@@ -32,43 +32,42 @@ if [ ! -f "$HOME_DIR/config/config.toml" ]; then
         --chain-id xpex-1
 fi
 
-echo "Configuring RPC..."
+echo "===== FIXING RPC ====="
 
-sed -i 's|laddr = "tcp://127.0.0.1:26657"|laddr = "tcp://0.0.0.0:26657"|' \
-    "$HOME_DIR/config/config.toml"
+sed -i \
+'s|^laddr = .*|laddr = "tcp://0.0.0.0:26657"|' \
+"$HOME_DIR/config/config.toml"
 
-sed -i 's|laddr = "tcp://localhost:26657"|laddr = "tcp://0.0.0.0:26657"|' \
-    "$HOME_DIR/config/config.toml"
+echo "===== FIXING API ====="
 
-echo "Configuring API..."
+sed -i \
+'s|^address = .*|address = "0.0.0.0:1317"|' \
+"$HOME_DIR/config/app.toml"
 
-sed -i 's|address = "tcp://localhost:1317"|address = "tcp://0.0.0.0:1317"|' \
-    "$HOME_DIR/config/app.toml"
+echo "===== FIXING GRPC ====="
 
-sed -i 's|address = "localhost:1317"|address = "0.0.0.0:1317"|' \
-    "$HOME_DIR/config/app.toml"
-
-echo "Configuring gRPC..."
-
-sed -i 's|address = "localhost:9090"|address = "0.0.0.0:9090"|' \
-    "$HOME_DIR/config/app.toml"
+sed -i \
+'s|^address = .*|address = "0.0.0.0:9090"|' \
+"$HOME_DIR/config/app.toml"
 
 echo "===== FINAL CONFIG ====="
 
-echo "RPC:"
-grep 'laddr = ' "$HOME_DIR/config/config.toml" | head -1
+echo "--- RPC ---"
+grep 'laddr =' "$HOME_DIR/config/config.toml" || true
 
-echo "API:"
-grep -n 'address.*1317' "$HOME_DIR/config/app.toml" || true
+echo "--- API ---"
+grep -n 'address =' "$HOME_DIR/config/app.toml" | head -5 || true
 
-echo "gRPC:"
-grep -n 'address.*9090' "$HOME_DIR/config/app.toml" || true
+echo "--- GRPC ---"
+grep -n 'address =' "$HOME_DIR/config/app.toml" | head -20 || true
 
-echo "========================"
+echo "=========================="
 
 if [ -z "${MINIMUM_GAS_PRICES:-}" ]; then
     export MINIMUM_GAS_PRICES="0uxpx"
 fi
+
+echo "===== STARTING XPEX NODE ====="
 
 exec /usr/local/bin/xpexd start \
     --home "$HOME_DIR" \
