@@ -1,7 +1,8 @@
+```sh
 #!/bin/sh
 set -eu
 
-echo "### XPEX RAILWAY START SCRIPT v3 ###"
+echo "### XPEX RAILWAY START SCRIPT v4 ###"
 echo "### PORT=${PORT:-NOT_SET} ###"
 
 HOME_DIR="/root/.exampleapp"
@@ -66,25 +67,44 @@ echo "FINAL CONFIG"
 echo "======================================"
 
 echo "--- RPC ---"
-grep -E 'laddr = .*26657' \
+grep -n 'laddr = .*26657' \
     "$HOME_DIR/config/config.toml" || true
 
 echo "--- API ---"
-grep -E 'address = .*'"${PORT:-1317}" \
+grep -n 'address = .*1317' \
     "$HOME_DIR/config/app.toml" || true
 
 echo "--- gRPC ---"
-grep -E 'address = .*9090' \
+grep -n 'address = .*9090' \
     "$HOME_DIR/config/app.toml" || true
 
 echo "======================================"
 
+echo "===== FILE CONFIG BEFORE START ====="
+
+echo "--- config.toml RPC ---"
+grep -n "laddr" \
+    "$HOME_DIR/config/config.toml" || true
+
+echo "--- app.toml API ---"
+grep -n "address" \
+    "$HOME_DIR/config/app.toml" | grep 1317 || true
+
+echo "--- app.toml gRPC ---"
+grep -n "address" \
+    "$HOME_DIR/config/app.toml" | grep 9090 || true
+
+echo "====================================="
+
 if [ -z "${MINIMUM_GAS_PRICES:-}" ]; then
     export MINIMUM_GAS_PRICES="0uxpx"
 fi
+
+echo "MINIMUM_GAS_PRICES=$MINIMUM_GAS_PRICES"
 
 echo "Starting xpexd..."
 
 exec /usr/local/bin/xpexd start \
     --home "$HOME_DIR" \
     --minimum-gas-prices "$MINIMUM_GAS_PRICES"
+```
