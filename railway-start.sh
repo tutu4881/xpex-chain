@@ -18,7 +18,7 @@ if [ -z "${MINIMUM_GAS_PRICES:-}" ]; then
     export MINIMUM_GAS_PRICES="0uxpx"
 fi
 
-exec /usr/bin/exampled start \
+exec /usr/local/bin/xpexd start \
     --home "$HOME_DIR" \
     --minimum-gas-prices "$MINIMUM_GAS_PRICES" \
     --p2p.laddr "tcp://0.0.0.0:26656" \
