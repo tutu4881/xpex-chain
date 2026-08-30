@@ -1,5 +1,5 @@
 {
-  "app_name": "\u003cappd\u003e",
+  "app_name": "<appd>",
   "app_version": "",
   "genesis_time": "2026-08-23T20:31:26.888739298Z",
   "chain_id": "xpex-1",
@@ -163,10 +163,10 @@
                 },
                 "min_self_delegation": "1",
                 "delegator_address": "",
-                "validator_address": "cosmosvaloper1dy8s3hyphzn6h8p6wx250760pee305fl456srr",
+                "validator_address": "cosmosvaloper187vl5nunwfs4rqzdnwyce8q3u25wdanehcd8eq",
                 "pubkey": {
                   "@type": "/cosmos.crypto.ed25519.PubKey",
-                  "key": "NeTe1+CN5DByJCtbrMVRKCA0gQNtb2+WmgGj/mZSCyk="
+                  "key": "a9yEvCrbBRCZklih9A3tphWUfengrS/cfGwHe2TdCQ4="
                 },
                 "value": {
                   "denom": "uxpx",
@@ -174,7 +174,7 @@
                 }
               }
             ],
-            "memo": "8b72776f72622cffdbc70581c862c6435857df60@192.168.165.113:26656",
+            "memo": "78a673c536efafa9441a8dc7098271f458b089f5@192.168.165.113:26656",
             "timeout_height": "0",
             "unordered": false,
             "timeout_timestamp": null,
@@ -186,7 +186,7 @@
               {
                 "public_key": {
                   "@type": "/cosmos.crypto.secp256k1.PubKey",
-                  "key": "Ah5XmUO1nZygld3UhkIUd4oACWn/bBkkVjrzkrp1xKdr"
+                  "key": "AqK0lzZ+mI2wOBh80weWZONQbiYv1qI6fpluJK0ax7qD"
                 },
                 "mode_info": {
                   "single": {
@@ -205,7 +205,7 @@
             "tip": null
           },
           "signatures": [
-            "P8TnxD0yUDwXlPUaZBqWMJWrYWJisrZJixN8ff0KNlQgOlLfurvw9Viq3AJBB5D6hpDBHJy/Gcg6LM8Re8WGqw=="
+            "PFYPhfHWAoqs834MxBKExgfaxmNA2mh3hkGNJh3NJg1u7ek0VuChRzy2O0PMV17qn+uJIu3NprqhPRBXgRuXLA=="
           ]
         }
       ]
