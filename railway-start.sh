@@ -24,43 +24,47 @@ chmod 600 "$HOME_DIR/config/priv_validator_key.json"
 
 echo "Validator key installed."
 
-if [ ! -f "$HOME_DIR/config/config.toml" ]; then
-    echo "Creating CometBFT config..."
+echo "Initializing XPEX configuration..."
 
+if [ ! -f "$HOME_DIR/config/config.toml" ]; then
     /usr/local/bin/xpexd init XPEX \
         --home "$HOME_DIR" \
-        --chain-id xpex-1 >/dev/null 2>&1 || true
+        --chain-id xpex-1
 fi
 
-if [ ! -f "$HOME_DIR/config/app.toml" ]; then
-    echo "ERROR: app.toml not found"
-    exit 1
-fi
+echo "Configuring RPC..."
 
-if [ ! -f "$HOME_DIR/config/config.toml" ]; then
-    echo "ERROR: config.toml not found"
-    exit 1
-fi
-
-echo "Configuring public network listeners..."
-
-sed -i 's|^laddr = "tcp://127.0.0.1:26657"|laddr = "tcp://0.0.0.0:26657"|' \
+sed -i 's|laddr = "tcp://127.0.0.1:26657"|laddr = "tcp://0.0.0.0:26657"|' \
     "$HOME_DIR/config/config.toml"
 
-sed -i 's|^laddr = "tcp://localhost:26657"|laddr = "tcp://0.0.0.0:26657"|' \
+sed -i 's|laddr = "tcp://localhost:26657"|laddr = "tcp://0.0.0.0:26657"|' \
     "$HOME_DIR/config/config.toml"
 
-sed -i 's|^address = "tcp://localhost:1317"|address = "tcp://0.0.0.0:1317"|' \
+echo "Configuring API..."
+
+sed -i 's|address = "tcp://localhost:1317"|address = "tcp://0.0.0.0:1317"|' \
     "$HOME_DIR/config/app.toml"
 
-sed -i 's|^address = "localhost:9090"|address = "0.0.0.0:9090"|' \
+sed -i 's|address = "localhost:1317"|address = "0.0.0.0:1317"|' \
     "$HOME_DIR/config/app.toml"
 
-echo "RPC configuration:"
-grep -E '^laddr = ' "$HOME_DIR/config/config.toml" | head -1
+echo "Configuring gRPC..."
 
-echo "API configuration:"
-grep -E '^address = ' "$HOME_DIR/config/app.toml" | head -1
+sed -i 's|address = "localhost:9090"|address = "0.0.0.0:9090"|' \
+    "$HOME_DIR/config/app.toml"
+
+echo "===== FINAL CONFIG ====="
+
+echo "RPC:"
+grep 'laddr = ' "$HOME_DIR/config/config.toml" | head -1
+
+echo "API:"
+grep -n 'address.*1317' "$HOME_DIR/config/app.toml" || true
+
+echo "gRPC:"
+grep -n 'address.*9090' "$HOME_DIR/config/app.toml" || true
+
+echo "========================"
 
 if [ -z "${MINIMUM_GAS_PRICES:-}" ]; then
     export MINIMUM_GAS_PRICES="0uxpx"
