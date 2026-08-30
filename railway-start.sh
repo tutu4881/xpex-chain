@@ -14,6 +14,17 @@ if [ ! -f "$HOME_DIR/config/genesis.json" ]; then
     exit 1
 fi
 
+if [ -z "${VALIDATOR_KEY_JSON_B64:-}" ]; then
+    echo "ERROR: VALIDATOR_KEY_JSON_B64 is not set"
+    exit 1
+fi
+
+echo "$VALIDATOR_KEY_JSON_B64" | base64 -d > "$HOME_DIR/config/priv_validator_key.json"
+
+chmod 600 "$HOME_DIR/config/priv_validator_key.json"
+
+echo "Validator key installed."
+
 if [ -z "${MINIMUM_GAS_PRICES:-}" ]; then
     export MINIMUM_GAS_PRICES="0uxpx"
 fi
