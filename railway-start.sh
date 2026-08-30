@@ -11,6 +11,8 @@ mkdir -p "$HOME_DIR/config"
 mkdir -p "$HOME_DIR/data"
 
 echo "PORT=${PORT:-not-set}"
+echo "RAILWAY_TCP_PROXY_DOMAIN=${RAILWAY_TCP_PROXY_DOMAIN:-not-set}"
+echo "RAILWAY_TCP_PROXY_PORT=${RAILWAY_TCP_PROXY_PORT:-not-set}"
 
 if [ ! -f "$HOME_DIR/config/genesis.json" ]; then
     echo "ERROR: genesis.json not found"
