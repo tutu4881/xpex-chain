@@ -5,7 +5,7 @@ echo "======================================"
 echo "        XPEX CHAIN — RAILWAY"
 echo "======================================"
 
-HOME_DIR="/root/.exampleapp"
+HOME_DIR="/data/.exampleapp"
 
 mkdir -p "$HOME_DIR/config"
 mkdir -p "$HOME_DIR/data"
