@@ -1,35 +1,24 @@
-# Build stage
-FROM golang:1.25-alpine AS build-env
+FROM golang:1.25-alpine AS build
 
-# Install build dependencies
-RUN apk add --no-cache make git libc-dev bash gcc linux-headers
+RUN apk add --no-cache git make gcc libc-dev
 
-WORKDIR /go/src/github.com/cosmos/example
+WORKDIR /app
 
-# Cache dependencies
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source and build
 COPY . .
 
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
+RUN go build -o /xpexd ./exampled
 
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /go/bin/exampled ./exampled
+FROM alpine:3.22
 
-FROM alpine:3
+RUN apk add --no-cache bash curl jq
 
-RUN apk add --no-cache bash jq sed curl
-
-COPY --from=build-env /go/bin/exampled /usr/bin/exampled
-
-EXPOSE 26656 26657 1317 9090
+COPY --from=build /xpexd /usr/local/bin/xpexd
 
 WORKDIR /root
 
-COPY scripts/localnet/wrapper.sh /usr/bin/wrapper.sh
-RUN chmod +x /usr/bin/wrapper.sh
+EXPOSE 26656 26657 1317 9090
 
-ENTRYPOINT []
-CMD ["exampled", "start"]
+CMD ["xpexd", "start", "--minimum-gas-prices", "0.001uxpx"]
