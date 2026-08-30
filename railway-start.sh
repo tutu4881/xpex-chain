@@ -31,7 +31,6 @@ fi
 
 echo "Genesis found."
 
-echo "Genesis found."
 
 # --------------------------------------------------
 # Initialize config

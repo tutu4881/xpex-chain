@@ -18,9 +18,9 @@ RUN apk add --no-cache bash curl jq sed python3
 
 COPY --from=build /xpexd /usr/local/bin/xpexd
 
-RUN mkdir -p /data/.exampleapp/config /data/.exampleapp/data
+RUN mkdir -p /data/.exampleapp/config /data/.exampleapp/data /opt/xpex
 
-COPY railway-config/config/genesis.json /data/.exampleapp/config/genesis.json
+COPY railway-config/config/genesis.json /opt/xpex/genesis.json
 COPY railway-start.sh /usr/bin/railway-start.sh
 
 RUN chmod +x /usr/bin/railway-start.sh
