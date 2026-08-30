@@ -59,8 +59,7 @@ echo "Validator key installed."
 
 echo "Configuring CometBFT RPC..."
 
-sed -i \
-    's|^laddr = .*|laddr = "tcp://0.0.0.0:26657"|' \
+sed -i '/^\[rpc\]/,/^\[/ s|^laddr = .*|laddr = "tcp://0.0.0.0:26657"|' \
     "$HOME_DIR/config/config.toml"
 
 # --------------------------------------------------
