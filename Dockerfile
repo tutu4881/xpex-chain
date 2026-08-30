@@ -14,7 +14,7 @@ RUN go build -o /xpexd ./exampled
 
 FROM alpine:3.22
 
-RUN apk add --no-cache bash curl jq sed
+RUN apk add --no-cache bash curl jq sed python3
 
 COPY --from=build /xpexd /usr/local/bin/xpexd
 

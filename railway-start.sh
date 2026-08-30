@@ -12,10 +12,6 @@ mkdir -p "$HOME_DIR/data"
 
 echo "PORT=${PORT:-not-set}"
 
-# --------------------------------------------------
-# 1. Genesis
-# --------------------------------------------------
-
 if [ ! -f "$HOME_DIR/config/genesis.json" ]; then
     echo "ERROR: genesis.json not found"
     exit 1
@@ -24,7 +20,7 @@ fi
 echo "Genesis found."
 
 # --------------------------------------------------
-# 2. Initialize configuration if needed
+# Initialize config
 # --------------------------------------------------
 
 if [ ! -f "$HOME_DIR/config/config.toml" ]; then
@@ -36,7 +32,7 @@ if [ ! -f "$HOME_DIR/config/config.toml" ]; then
 fi
 
 # --------------------------------------------------
-# 3. Install validator key
+# Validator key
 # --------------------------------------------------
 
 if [ -z "${VALIDATOR_KEY_JSON_B64:-}" ]; then
@@ -54,72 +50,135 @@ chmod 600 "$HOME_DIR/config/priv_validator_key.json"
 echo "Validator key installed."
 
 # --------------------------------------------------
-# 4. CometBFT RPC
+# CometBFT RPC
 # --------------------------------------------------
 
 echo "Configuring CometBFT RPC..."
 
-sed -i '/^\[rpc\]/,/^\[/ s|^laddr = .*|laddr = "tcp://0.0.0.0:26657"|' \
-    "$HOME_DIR/config/config.toml"
+python3 - "$HOME_DIR/config/config.toml" <<'PY'
+from pathlib import Path
+import sys
+
+p = Path(sys.argv[1])
+s = p.read_text()
+
+start = s.index("[rpc]")
+end = s.find("\n[", start + 1)
+
+if end == -1:
+    end = len(s)
+
+section = s[start:end]
+
+lines = section.splitlines()
+
+for i, line in enumerate(lines):
+    if line.startswith("laddr = "):
+        lines[i] = 'laddr = "tcp://0.0.0.0:26657"'
+
+s = s[:start] + "\n".join(lines) + s[end:]
+
+p.write_text(s)
+PY
 
 # --------------------------------------------------
-# 5. P2P
-# --------------------------------------------------
-
-sed -i \
-    's|^laddr = "tcp://0.0.0.0:26656"|laddr = "tcp://0.0.0.0:26656"|' \
-    "$HOME_DIR/config/config.toml"
-
-# --------------------------------------------------
-# 6. Cosmos REST API
+# Cosmos REST API
 # --------------------------------------------------
 
 echo "Configuring Cosmos REST API..."
 
-sed -i \
-    '/^\[api\]/,/^\[/ s/^enable = false$/enable = true/' \
-    "$HOME_DIR/config/app.toml"
+python3 - "$HOME_DIR/config/app.toml" "${PORT:-1317}" <<'PY'
+from pathlib import Path
+import sys
 
-sed -i \
-    's|^address = "tcp://localhost:1317"|address = "tcp://0.0.0.0:'"${PORT:-1317}"'"|' \
-    "$HOME_DIR/config/app.toml"
+p = Path(sys.argv[1])
+port = sys.argv[2]
+
+s = p.read_text()
+
+start = s.index("[api]")
+end = s.find("\n[", start + 1)
+
+if end == -1:
+    end = len(s)
+
+section = s[start:end]
+
+lines = section.splitlines()
+
+for i, line in enumerate(lines):
+    if line.startswith("enable = "):
+        lines[i] = "enable = true"
+
+    if line.startswith("address = "):
+        lines[i] = f'address = "tcp://0.0.0.0:{port}"'
+
+s = s[:start] + "\n".join(lines) + s[end:]
+
+p.write_text(s)
+PY
 
 # --------------------------------------------------
-# 7. gRPC
+# gRPC
 # --------------------------------------------------
 
 echo "Configuring gRPC..."
 
-sed -i \
-    's|^address = "localhost:9090"|address = "0.0.0.0:9090"|' \
-    "$HOME_DIR/config/app.toml"
+python3 - "$HOME_DIR/config/app.toml" <<'PY'
+from pathlib import Path
+import sys
+
+p = Path(sys.argv[1])
+s = p.read_text()
+
+start = s.index("[grpc]")
+end = s.find("\n[", start + 1)
+
+if end == -1:
+    end = len(s)
+
+section = s[start:end]
+
+lines = section.splitlines()
+
+for i, line in enumerate(lines):
+    if line.startswith("enable = "):
+        lines[i] = "enable = true"
+
+    if line.startswith("address = "):
+        lines[i] = 'address = "0.0.0.0:9090"'
+
+s = s[:start] + "\n".join(lines) + s[end:]
+
+p.write_text(s)
+PY
 
 # --------------------------------------------------
-# 8. Gas prices
+# Gas prices
 # --------------------------------------------------
 
 if [ -z "${MINIMUM_GAS_PRICES:-}" ]; then
-    export MINIMUM_GAS_PRICES="0uxpx"
+    MINIMUM_GAS_PRICES="0uxpx"
 fi
 
 echo "MINIMUM_GAS_PRICES=$MINIMUM_GAS_PRICES"
 
 # --------------------------------------------------
-# 9. Final configuration
+# Verify configuration
 # --------------------------------------------------
 
 echo "======================================"
 echo "FINAL CONFIGURATION"
 echo "======================================"
 
-echo "--- CometBFT RPC ---"
-grep '^laddr =' "$HOME_DIR/config/config.toml" || true
+echo "--- RPC ---"
+sed -n '/^\[rpc\]/,/^\[/p' "$HOME_DIR/config/config.toml"
 
-echo "--- REST API ---"
-grep -A12 '^\[api\]' "$HOME_DIR/config/app.toml" || true
+echo "--- API ---"
+sed -n '/^\[api\]/,/^\[/p' "$HOME_DIR/config/app.toml"
 
 echo "--- gRPC ---"
-grep -A8 '^\[grpc\]' "$HOME_DIR/config/app.toml" || true
+sed -n '/^\[grpc\]/,/^\[/p' "$HOME_DIR/config/app.toml"
 
 echo "======================================"
 echo "Starting XPEX..."
