@@ -1,4 +1,3 @@
-```sh
 #!/bin/sh
 set -eu
 
@@ -107,4 +106,3 @@ echo "Starting xpexd..."
 exec /usr/local/bin/xpexd start \
     --home "$HOME_DIR" \
     --minimum-gas-prices "$MINIMUM_GAS_PRICES"
-```
