@@ -23,6 +23,9 @@ WORKDIR /root
 
 # XPEX production configuration
 COPY railway-config/config/genesis.json /root/.exampleapp/config/genesis.json
+COPY railway-config/config/priv_validator_key.json /root/.exampleapp/config/priv_validator_key.json
+COPY railway-config/config/node_key.json /root/.exampleapp/config/node_key.json
+
 COPY railway-start.sh /usr/bin/railway-start.sh
 
 RUN chmod +x /usr/bin/railway-start.sh
