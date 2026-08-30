@@ -6,6 +6,7 @@ echo "        XPEX CHAIN — RAILWAY"
 echo "======================================"
 
 HOME_DIR="/data/.exampleapp"
+IMAGE_GENESIS="/opt/xpex/genesis.json"
 
 mkdir -p "$HOME_DIR/config"
 mkdir -p "$HOME_DIR/data"
@@ -15,9 +16,20 @@ echo "RAILWAY_TCP_PROXY_DOMAIN=${RAILWAY_TCP_PROXY_DOMAIN:-not-set}"
 echo "RAILWAY_TCP_PROXY_PORT=${RAILWAY_TCP_PROXY_PORT:-not-set}"
 
 if [ ! -f "$HOME_DIR/config/genesis.json" ]; then
-    echo "ERROR: genesis.json not found"
-    exit 1
+    echo "Genesis not found in persistent volume."
+
+    if [ ! -f "$IMAGE_GENESIS" ]; then
+        echo "ERROR: genesis template not found at $IMAGE_GENESIS"
+        exit 1
+    fi
+
+    echo "Installing genesis into persistent volume..."
+    cp "$IMAGE_GENESIS" "$HOME_DIR/config/genesis.json"
+else
+    echo "Genesis already exists in persistent volume."
 fi
+
+echo "Genesis found."
 
 echo "Genesis found."
 
