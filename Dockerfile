@@ -20,7 +20,7 @@ COPY --from=build /xpexd /usr/local/bin/xpexd
 
 RUN mkdir -p /root/.exampleapp/config /root/.exampleapp/data
 
-COPY railway-config/config/genesis.json /root/.exampleapp/config/genesis.json
+
 COPY railway-start.sh /usr/bin/railway-start.sh
 
 RUN chmod +x /usr/bin/railway-start.sh
