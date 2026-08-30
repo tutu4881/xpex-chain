@@ -2,3 +2,5 @@
 buildxpexd
 xpexd
 build/
+railway-config/config/node_key.json
+railway-config/config/priv_validator_key.json
