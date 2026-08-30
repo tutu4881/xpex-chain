@@ -1,6 +1,9 @@
 #!/bin/sh
 set -eu
 
+echo "### XPEX RAILWAY START SCRIPT v3 ###"
+echo "### PORT=${PORT:-NOT_SET} ###"
+
 HOME_DIR="/root/.exampleapp"
 
 echo "======================================"
