@@ -18,13 +18,18 @@ RUN apk add --no-cache bash curl jq sed
 
 COPY --from=build /xpexd /usr/local/bin/xpexd
 
-WORKDIR /root
+RUN mkdir -p /root/.exampleapp/config /root/.exampleapp/data
 
 COPY railway-config/config/genesis.json /root/.exampleapp/config/genesis.json
 COPY railway-start.sh /usr/bin/railway-start.sh
 
 RUN chmod +x /usr/bin/railway-start.sh
 
-EXPOSE 26656 26657 1317 9090
+EXPOSE 26656
+EXPOSE 26657
+EXPOSE 1317
+EXPOSE 9090
+
+WORKDIR /root
 
 ENTRYPOINT ["/usr/bin/railway-start.sh"]
