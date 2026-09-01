@@ -165,7 +165,48 @@ s = s[:start] + "\n".join(lines) + s[end:]
 
 p.write_text(s)
 PY
+# --------------------------------------------------
+# P2P
+# --------------------------------------------------
 
+echo "Configuring P2P..."
+
+P2P_EXTERNAL_ADDRESS="${P2P_EXTERNAL_ADDRESS:-}"
+PERSISTENT_PEERS="${PERSISTENT_PEERS:-}"
+
+python3 - "$HOME_DIR/config/config.toml" "$P2P_EXTERNAL_ADDRESS" "$PERSISTENT_PEERS" <<'PY'
+from pathlib import Path
+import sys
+
+p = Path(sys.argv[1])
+external_address = sys.argv[2]
+persistent_peers = sys.argv[3]
+
+s = p.read_text()
+
+start = s.index("[p2p]")
+end = s.find("\n[", start + 1)
+
+if end == -1:
+    end = len(s)
+
+section = s[start:end]
+lines = section.splitlines()
+
+for i, line in enumerate(lines):
+    if line.startswith("external_address = "):
+        lines[i] = f'external_address = "{external_address}"'
+
+    if line.startswith("persistent_peers = "):
+        lines[i] = f'persistent_peers = "{persistent_peers}"'
+
+s = s[:start] + "\n".join(lines) + s[end:]
+
+p.write_text(s)
+PY
+
+echo "P2P_EXTERNAL_ADDRESS=$P2P_EXTERNAL_ADDRESS"
+echo "PERSISTENT_PEERS=$PERSISTENT_PEERS"
 # --------------------------------------------------
 # Gas prices
 # --------------------------------------------------
