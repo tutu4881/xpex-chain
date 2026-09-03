@@ -100,7 +100,7 @@ PY
 
 echo "Configuring Cosmos REST API..."
 
-python3 - "$HOME_DIR/config/app.toml" "${PORT:-1317}" <<'PY'
+python3 - "$HOME_DIR/config/app.toml" "8080" <<'PY'
 from pathlib import Path
 import sys
 
