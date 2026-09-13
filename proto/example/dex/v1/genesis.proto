@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package example.dex;
+
+import "example/dex/v1/state.proto";
+
+option go_package = "github.com/cosmos/example/x/dex/types";
+
+message GenesisState {
+  uint64 next_pool_id = 1;
+  repeated Pool pools = 2;
+}

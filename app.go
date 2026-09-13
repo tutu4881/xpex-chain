@@ -68,6 +68,9 @@ import (
 	counter "github.com/tutu787878/xpex-chain/x/counter"
 	counterkeeper "github.com/tutu787878/xpex-chain/x/counter/keeper"
 	countertypes "github.com/tutu787878/xpex-chain/x/counter/types"
+	dex "github.com/tutu787878/xpex-chain/x/dex"
+	dexkeeper "github.com/tutu787878/xpex-chain/x/dex/keeper"
+	dextypes "github.com/tutu787878/xpex-chain/x/dex/types"
 )
 
 const (
@@ -85,6 +88,7 @@ var (
 		authtypes.FeeCollectorName:     nil,
 		distrtypes.ModuleName:          nil,
 		countertypes.ModuleName:        nil,
+		dextypes.ModuleName:            nil,
 		stakingtypes.BondedPoolName:    {authtypes.Burner, authtypes.Staking},
 		stakingtypes.NotBondedPoolName: {authtypes.Burner, authtypes.Staking},
 		govtypes.ModuleName:            {authtypes.Burner},
@@ -117,7 +121,8 @@ type ExampleApp struct {
 	SlashingKeeper        slashingkeeper.Keeper
 	ConsensusParamsKeeper consensusparamkeeper.Keeper
 	// counter tutorial app wiring 2: add the counter keeper field below
-	CounterKeeper         *counterkeeper.Keeper
+	CounterKeeper *counterkeeper.Keeper
+	DexKeeper     *dexkeeper.Keeper
 
 	// the module manager
 	ModuleManager      *module.Manager
@@ -176,6 +181,7 @@ func NewExampleApp(
 		consensusparamtypes.StoreKey,
 		// counter tutorial app wiring 3: add the counter store key below
 		countertypes.StoreKey,
+		dextypes.StoreKey,
 	)
 
 	if err := bApp.RegisterStreamingServices(appOpts, keys); err != nil {
@@ -286,6 +292,12 @@ func NewExampleApp(
 	// counter tutorial app wiring 4: create the counter keeper below
 	app.CounterKeeper = counterkeeper.NewKeeper(runtime.NewKVStoreService(keys[countertypes.StoreKey]), appCodec, app.BankKeeper)
 
+	app.DexKeeper = dexkeeper.NewKeeper(
+		runtime.NewKVStoreService(keys[dextypes.StoreKey]),
+		appCodec,
+		app.BankKeeper,
+	)
+
 	app.ModuleManager = module.NewManager(
 		genutil.NewAppModule(
 			app.AccountKeeper, app.StakingKeeper, app,
@@ -301,6 +313,7 @@ func NewExampleApp(
 		vesting.NewAppModule(app.AccountKeeper, app.BankKeeper),
 		// counter tutorial app wiring 5: register the counter module below
 		counter.NewAppModule(appCodec, app.CounterKeeper),
+		dex.NewAppModule(appCodec, app.DexKeeper),
 	)
 
 	// BasicModuleManager defines the module BasicManager is in charge of setting up basic,
@@ -311,6 +324,7 @@ func NewExampleApp(
 		app.ModuleManager,
 		map[string]module.AppModuleBasic{
 			genutiltypes.ModuleName: genutil.NewAppModuleBasic(genutiltypes.DefaultMessageValidator),
+			dextypes.ModuleName:     dex.NewAppModule(appCodec, app.DexKeeper).AppModuleBasic,
 			govtypes.ModuleName: gov.NewAppModuleBasic(
 				[]govclient.ProposalHandler{},
 			),
@@ -336,6 +350,7 @@ func NewExampleApp(
 		stakingtypes.ModuleName,
 		// counter tutorial app wiring 6: add the counter module to genesis order below
 		countertypes.ModuleName,
+		dextypes.ModuleName,
 		genutiltypes.ModuleName,
 	)
 	app.ModuleManager.SetOrderEndBlockers(
@@ -344,6 +359,7 @@ func NewExampleApp(
 		stakingtypes.ModuleName,
 		// counter tutorial app wiring 7: add the counter module to export order below
 		countertypes.ModuleName,
+		dextypes.ModuleName,
 		genutiltypes.ModuleName,
 	)
 	// NOTE: The genutils module must occur after staking so that pools are
@@ -359,6 +375,7 @@ func NewExampleApp(
 		consensusparamtypes.ModuleName,
 		vestingtypes.ModuleName,
 		countertypes.ModuleName,
+		dextypes.ModuleName,
 		genutiltypes.ModuleName,
 	}
 
@@ -372,6 +389,7 @@ func NewExampleApp(
 		govtypes.ModuleName,
 		vestingtypes.ModuleName,
 		countertypes.ModuleName,
+		dextypes.ModuleName,
 		genutiltypes.ModuleName,
 	}
 

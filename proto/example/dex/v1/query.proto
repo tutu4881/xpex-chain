@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package example.dex;
+
+import "cosmos/base/query/v1beta1/pagination.proto";
+import "google/api/annotations.proto";
+import "example/dex/v1/state.proto";
+
+option go_package = "github.com/cosmos/example/x/dex/types";
+
+service Query {
+  rpc Pool(QueryPoolRequest) returns (QueryPoolResponse) {
+    option (google.api.http).get = "/example/dex/v1/pools/{pool_id}";
+  }
+
+  rpc Pools(QueryPoolsRequest) returns (QueryPoolsResponse) {
+    option (google.api.http).get = "/example/dex/v1/pools";
+  }
+
+  rpc LPBalance(QueryLPBalanceRequest) returns (QueryLPBalanceResponse) {
+    option (google.api.http).get = "/example/dex/v1/pools/{pool_id}/lp/{address}";
+  }
+
+  rpc LPBalances(QueryLPBalancesRequest) returns (QueryLPBalancesResponse) {
+    option (google.api.http).get = "/example/dex/v1/pools/{pool_id}/lp";
+  }
+}
+
+message QueryPoolRequest {
+  uint64 pool_id = 1;
+}
+
+message QueryPoolResponse {
+  Pool pool = 1;
+}
+
+message QueryPoolsRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+
+message QueryPoolsResponse {
+  repeated Pool pools = 1;
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+message QueryLPBalanceRequest {
+  uint64 pool_id = 1;
+  string address = 2;
+}
+
+message QueryLPBalanceResponse {
+  string lp_balance = 1;
+}
+
+message QueryLPBalancesRequest {
+  uint64 pool_id = 1;
+}
+
+message LPBalanceEntry {
+  string address = 1;
+  string lp_balance = 2;
+}
+
+message QueryLPBalancesResponse {
+  repeated LPBalanceEntry balances = 1;
+}
