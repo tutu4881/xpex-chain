@@ -407,7 +407,7 @@ func NewExampleApp(
 	app.MountKVStores(keys)
 	// initialize BaseApp
 	app.SetInitChainer(app.InitChainer)
-	app.SetPreBlocker(app.PreBlocker())
+	app.SetPreBlocker(app.PreBlocker)
 	app.SetBeginBlocker(app.BeginBlocker)
 	app.SetEndBlocker(app.EndBlocker)
 	app.setAnteHandler(txConfig)
@@ -539,6 +539,18 @@ func (app *ExampleApp) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) 
 		panic(err)
 	}
 	return app.ModuleManager.InitGenesis(ctx, app.appCodec, genesisState)
+}
+
+// PreBlocker runs the module manager's PreBlock hooks (e.g. auth's unordered
+// transaction pruning). This method is defined directly on ExampleApp so it
+// shadows the embedded *baseapp.BaseApp's own PreBlocker() getter; passing
+// app.PreBlocker (no call) as a method value to SetPreBlocker wires this
+// implementation in. Previously this line called app.PreBlocker() (with
+// parens), which invokes BaseApp's getter and returns whatever preBlocker
+// was already set — nil, since this is the very call that was supposed to
+// set it. That compiled cleanly but silently disabled all PreBlock logic.
+func (app *ExampleApp) PreBlocker(ctx sdk.Context, _ *abci.RequestFinalizeBlock) (*sdk.ResponsePreBlock, error) {
+	return app.ModuleManager.PreBlock(ctx)
 }
 
 func (app *ExampleApp) SimulationManager() *module.SimulationManager {

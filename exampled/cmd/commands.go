@@ -13,6 +13,7 @@ import (
 	"cosmossdk.io/log/v2"
 	confixcmd "cosmossdk.io/tools/confix/cmd"
 
+	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/debug"
 	"github.com/cosmos/cosmos-sdk/client/keys"
@@ -192,6 +193,20 @@ func newApp(
 	appOpts servertypes.AppOptions,
 ) servertypes.Application {
 	baseappOptions := server.DefaultBaseappOptions(appOpts)
+
+	// DIAGNOSTIC / MITIGATION: force synchronous IAVL pruning instead of the
+	// SDK default (background/async pruning via iavltree.AsyncPruningOption).
+	// Unconfirmed root cause for the "version does not exist" panic on
+	// restart: with async pruning, orphan cleanup for old versions runs in a
+	// background goroutine that is not necessarily drained before process
+	// exit. Forcing sync pruning removes that race entirely at the cost of
+	// slightly slower commits. This is meant as a first, cheap, reversible
+	// experiment while the exact root cause is confirmed with the repro
+	// test (see app_persistence_test.go) - it is NOT presented as a proven
+	// fix. Revert by deleting this line if the repro test shows the bug
+	// persists with this option on.
+	baseappOptions = append(baseappOptions, baseapp.SetIAVLSyncPruning(true))
+
 	return example.NewExampleApp(
 		logger, db, traceStore, true,
 		appOpts,
