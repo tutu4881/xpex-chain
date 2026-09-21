@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package example.dex;
+
+import "cosmos/msg/v1/msg.proto";
+import "cosmos_proto/cosmos.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/cosmos/example/x/dex/types";
+
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  rpc CreatePool(MsgCreatePool) returns (MsgCreatePoolResponse);
+  rpc AddLiquidity(MsgAddLiquidity) returns (MsgAddLiquidityResponse);
+  rpc RemoveLiquidity(MsgRemoveLiquidity) returns (MsgRemoveLiquidityResponse);
+  rpc Swap(MsgSwap) returns (MsgSwapResponse);
+}
+
+message MsgCreatePool {
+  option (cosmos.msg.v1.signer) = "sender";
+
+  string sender = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string token_a = 2;
+  string token_b = 3;
+  string amount_a = 4;
+  string amount_b = 5;
+  string fee_bps = 6;
+}
+
+message MsgCreatePoolResponse {
+  uint64 pool_id = 1;
+}
+
+message MsgAddLiquidity {
+  option (cosmos.msg.v1.signer) = "sender";
+
+  string sender = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 pool_id = 2;
+  string amount_a = 3;
+  string amount_b = 4;
+  string min_lp = 5;
+}
+
+message MsgAddLiquidityResponse {
+  string lp_received = 1;
+}
+
+message MsgRemoveLiquidity {
+  option (cosmos.msg.v1.signer) = "sender";
+
+  string sender = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 pool_id = 2;
+  string lp_amount = 3;
+  string min_a = 4;
+  string min_b = 5;
+}
+
+message MsgRemoveLiquidityResponse {
+  string amount_a = 1;
+  string amount_b = 2;
+}
+
+message MsgSwap {
+  option (cosmos.msg.v1.signer) = "sender";
+
+  string sender = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 pool_id = 2;
+  string offer_denom = 3;
+  string offer_amount = 4;
+  string min_receive = 5;
+}
+
+message MsgSwapResponse {
+  string receive_amount = 1;
+}
