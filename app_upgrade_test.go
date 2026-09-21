@@ -44,6 +44,7 @@ import (
 	"time"
 
 	"cosmossdk.io/log/v2"
+	"cosmossdk.io/store/metrics"
 	"cosmossdk.io/store/rootmulti"
 	storetypes "cosmossdk.io/store/types"
 	abci "github.com/cometbft/cometbft/abci/types"
@@ -92,7 +93,19 @@ func TestUpgradeAddsDexStoreToExistingChain(t *testing.T) {
 	db, err := dbm.NewDB("application", dbm.GoLevelDBBackend, dataDir)
 	require.NoError(t, err, "opening application.db for the fabricated pre-upgrade chain")
 
-	rs := rootmulti.NewStore(db, log.NewNopLogger(), nil)
+	// NOTE: the metrics gatherer here MUST be a real no-op implementation,
+	// not a bare `nil` interface value. rootmulti.Store forwards it
+	// unchanged into every mounted iavl.Store (see
+	// loadCommitStoreFromParams -> iavl.LoadStoreWithOpts), and
+	// iavl.(*Store).Commit() unconditionally calls methods on it to record
+	// commit timing. Mounting and LoadLatestVersion never touch it, so a
+	// `nil` gatherer looks fine right up until the first rs.Commit(),
+	// where invoking a method on a truly nil metrics.StoreMetrics
+	// interface value panics with exactly the
+	// "invalid memory address or nil pointer dereference" seen in
+	// iavl.(*Store).Commit() in the bug report. tools/storediag/main.go
+	// gets away with `nil` here only because it never calls Commit().
+	rs := rootmulti.NewStore(db, log.NewNopLogger(), metrics.NewNoOpMetrics())
 	for _, key := range oldKeys {
 		rs.MountStoreWithDB(key, storetypes.StoreTypeIAVL, nil)
 	}
