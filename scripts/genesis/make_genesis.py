@@ -40,6 +40,8 @@ def main():
     ap.add_argument("--usdt-supply", type=int, required=True, help="whole USDT (6 decimals are applied)")
     ap.add_argument("--genesis-time", required=True)
     ap.add_argument("--treasury", default=TREASURY)
+    ap.add_argument("--extra-account", action="append", default=[],
+                    help="STAGING ONLY. address:XPX:USDT (whole units) funded in genesis for testing")
     a = ap.parse_args()
 
     g = json.load(open(a.base))
@@ -74,6 +76,16 @@ def main():
         "uri": "",
         "uri_hash": "",
     })
+
+    for spec in a.extra_account:
+        addr, xpx, usdt = spec.split(":")
+        coins = []
+        add_coin(coins, "uxpx", int(xpx) * 1_000_000)
+        add_coin(coins, "uusdt", int(usdt) * 1_000_000)
+        bank["balances"].append({"address": addr, "coins": coins})
+        add_coin(bank["supply"], "uxpx", int(xpx) * 1_000_000)
+        add_coin(bank["supply"], "uusdt", int(usdt) * 1_000_000)
+        print(f"extra (staging) account {addr}: {xpx} XPX, {usdt} USDT")
 
     st["dex"] = {"next_pool_id": "1", "pools": []}
     st.setdefault("upgrade", {})
