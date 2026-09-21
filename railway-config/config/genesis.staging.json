@@ -72,7 +72,7 @@
           "coins": [
             {
               "denom": "uusdt",
-              "amount": "1000000000000"
+              "amount": "1000000000"
             },
             {
               "denom": "uxpx",
@@ -115,7 +115,7 @@
       "supply": [
         {
           "denom": "uusdt",
-          "amount": "1100000000000"
+          "amount": "101000000000"
         },
         {
           "denom": "uxpx",

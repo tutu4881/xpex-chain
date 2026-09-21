@@ -1,5 +1,5 @@
 {
-  "genesis_time": "2026-09-21T16:00:00Z",
+  "genesis_time": "2026-09-21T20:00:00Z",
   "chain_id": "xpex-1",
   "initial_height": "1",
   "consensus_params": {
@@ -72,7 +72,7 @@
           "coins": [
             {
               "denom": "uusdt",
-              "amount": "1000000000000"
+              "amount": "1000000000"
             },
             {
               "denom": "uxpx",
@@ -102,7 +102,7 @@
       "supply": [
         {
           "denom": "uusdt",
-          "amount": "1000000000000"
+          "amount": "1000000000"
         },
         {
           "denom": "uxpx",
