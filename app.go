@@ -1,6 +1,7 @@
 package example
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	db "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/grpc/cmtservice"
 	nodeservice "github.com/cosmos/cosmos-sdk/client/grpc/node"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -62,7 +64,11 @@ import (
 	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/cosmos/cosmos-sdk/x/tx/signing"
+	upgrade "github.com/cosmos/cosmos-sdk/x/upgrade"
+	upgradekeeper "github.com/cosmos/cosmos-sdk/x/upgrade/keeper"
+	upgradetypes "github.com/cosmos/cosmos-sdk/x/upgrade/types"
 	"github.com/cosmos/gogoproto/proto"
+	"github.com/spf13/cast"
 
 	// counter tutorial app wiring 1: add counter imports below
 	counter "github.com/tutu787878/xpex-chain/x/counter"
@@ -75,6 +81,15 @@ import (
 
 const (
 	appName = "exampleApp"
+
+	// AddDexStoreUpgradeName is the governance-scheduled x/upgrade Plan name
+	// that adds the `dex` KVStore to a chain whose existing block history
+	// predates x/dex. It must match exactly what is submitted on-chain via
+	// MsgSoftwareUpgrade (or written by hand to upgrade-info.json for the
+	// one-time bootstrap described in the deployment runbook, since x/upgrade
+	// itself did not exist on this chain before this release). Exported so
+	// both app.go and its tests reference the same literal.
+	AddDexStoreUpgradeName = "v2-add-dex-store"
 )
 
 var (
@@ -123,6 +138,7 @@ type ExampleApp struct {
 	// counter tutorial app wiring 2: add the counter keeper field below
 	CounterKeeper *counterkeeper.Keeper
 	DexKeeper     *dexkeeper.Keeper
+	UpgradeKeeper *upgradekeeper.Keeper
 
 	// the module manager
 	ModuleManager      *module.Manager
@@ -133,6 +149,12 @@ type ExampleApp struct {
 
 	// module configurator
 	configurator module.Configurator
+
+	// addDexStoreUpgradeInfo is what ReadUpgradeInfoFromDisk() returned at
+	// boot time, captured so PreBlocker (below) can self-schedule the
+	// AddDexStoreUpgradeName plan on-chain at exactly that height. See the
+	// comment on PreBlocker for why this bootstrap step is necessary.
+	addDexStoreUpgradeInfo upgradetypes.Plan
 }
 
 func NewExampleApp(
@@ -179,6 +201,7 @@ func NewExampleApp(
 		slashingtypes.StoreKey,
 		govtypes.StoreKey,
 		consensusparamtypes.StoreKey,
+		upgradetypes.StoreKey,
 		// counter tutorial app wiring 3: add the counter store key below
 		countertypes.StoreKey,
 		dextypes.StoreKey,
@@ -203,6 +226,27 @@ func NewExampleApp(
 		runtime.NewKVStoreService(keys[consensusparamtypes.StoreKey]),
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 		runtime.EventService{},
+	)
+
+	// UpgradeKeeper must exist before LoadLatestVersion() is called (further
+	// below) so that its store-upgrade wiring can intercept how the store is
+	// loaded. skipUpgradeHeights/homePath come from the same appOpts the
+	// `start`/`export` commands already populate via cosmos-sdk's standard
+	// server.AddCommandsWithStartCmdOptions flags (--unsafe-skip-upgrades,
+	// --home); nothing else in the CLI needs to change for this to work.
+	skipUpgradeHeights := make(map[int64]bool)
+	for _, h := range cast.ToIntSlice(appOpts.Get(server.FlagUnsafeSkipUpgrades)) {
+		skipUpgradeHeights[int64(h)] = true
+	}
+	homePath := cast.ToString(appOpts.Get(flags.FlagHome))
+
+	app.UpgradeKeeper = upgradekeeper.NewKeeper(
+		skipUpgradeHeights,
+		runtime.NewKVStoreService(keys[upgradetypes.StoreKey]),
+		appCodec,
+		homePath,
+		app.BaseApp,
+		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
 	bApp.SetParamStore(app.ConsensusParamsKeeper.ParamsStore)
 
@@ -314,7 +358,17 @@ func NewExampleApp(
 		// counter tutorial app wiring 5: register the counter module below
 		counter.NewAppModule(appCodec, app.CounterKeeper),
 		dex.NewAppModule(appCodec, app.DexKeeper),
+		upgrade.NewAppModule(app.UpgradeKeeper, authcodec.NewBech32Codec(sdk.Bech32MainPrefix)),
 	)
+
+	// Record the module manager's own version map as the "initial" version
+	// map x/upgrade's InitGenesis will persist for chains that start fresh
+	// from genesis with x/upgrade already wired in. This is what lets a
+	// *future* new module be added the same way dex is being added now,
+	// without needing the fromVM back-fill done in the upgrade handler
+	// below (that back-fill exists only because x/upgrade did not exist on
+	// this chain prior to this upgrade).
+	app.UpgradeKeeper.SetInitVersionMap(app.ModuleManager.GetVersionMap())
 
 	// BasicModuleManager defines the module BasicManager is in charge of setting up basic,
 	// non-dependent module elements, such as codec registration and genesis verification.
@@ -341,7 +395,11 @@ func NewExampleApp(
 	app.sm = module.NewSimulationManagerFromAppModules(app.ModuleManager.Modules, overrideModules)
 	app.sm.RegisterStoreDecoders()
 
+	// upgrade MUST be first: its PreBlock hook is what applies a scheduled
+	// upgrade (including any pending store migration) before any other
+	// module's BeginBlock/PreBlock logic touches state for this height.
 	app.ModuleManager.SetOrderPreBlockers(
+		upgradetypes.ModuleName,
 		authtypes.ModuleName,
 	)
 	app.ModuleManager.SetOrderBeginBlockers(
@@ -373,6 +431,7 @@ func NewExampleApp(
 		slashingtypes.ModuleName,
 		govtypes.ModuleName,
 		consensusparamtypes.ModuleName,
+		upgradetypes.ModuleName,
 		vestingtypes.ModuleName,
 		countertypes.ModuleName,
 		dextypes.ModuleName,
@@ -381,6 +440,7 @@ func NewExampleApp(
 
 	exportModuleOrder := []string{
 		consensusparamtypes.ModuleName,
+		upgradetypes.ModuleName,
 		authtypes.ModuleName,
 		banktypes.ModuleName,
 		distrtypes.ModuleName,
@@ -402,6 +462,107 @@ func NewExampleApp(
 		panic(err)
 	}
 	autocliv1.RegisterQueryServer(app.GRPCQueryRouter(), runtimeservices.NewAutoCLIQueryService(app.ModuleManager.Modules))
+
+	// ------------------------------------------------------------------
+	// Store-upgrade wiring for adding the `dex` (and `upgrade`) stores to
+	// an existing chain.
+	//
+	// Root cause this fixes: `dex` is a KVStoreKey that did not exist when
+	// earlier blocks of this chain were committed, so it has no entry in
+	// any historical CommitInfo -- and neither does `upgrade`, since this
+	// release is also the first one to wire x/upgrade in at all. cosmossdk.io/
+	// store/rootmulti's loadVersion only tolerates a store whose on-disk
+	// version doesn't match the root store's committed height when that
+	// store is explicitly named in a *StoreUpgrades{Added: [...]} passed to
+	// LoadLatestVersionAndUpgrade. A plain app.LoadLatestVersion() (what
+	// this app called before this fix) always passes a nil StoreUpgrades,
+	// so on any data directory that predates `dex` it fails with:
+	//
+	//   version of store dex mismatch root store's version; expected N got 0;
+	//   new stores should be added using StoreUpgrades
+	//
+	// The supported fix is x/upgrade's UpgradeStoreLoader: an
+	// app.SetStoreLoader override that is a no-op on every block except the
+	// one immediately following a named, scheduled upgrade height, where it
+	// runs LoadLatestVersionAndUpgrade with the given StoreUpgrades exactly
+	// once. This must be set up before LoadLatestVersion() runs below.
+	//
+	// Getting the physical stores mounted is only half of it. The handler
+	// registered below (which actually initializes dex's genesis state and
+	// records the module version map) is invoked by x/upgrade's own
+	// PreBlocker, which only fires it once it finds a matching Plan already
+	// scheduled *on-chain*, in x/upgrade's own store. On a chain that
+	// already had x/upgrade, that Plan is put there ahead of time by a
+	// passed MsgSoftwareUpgrade governance proposal. That path does not
+	// exist here: nothing could have scheduled anything in x/upgrade's
+	// store before this block, because that store itself did not exist
+	// before this block. See PreBlocker below for how this is bridged.
+	// ------------------------------------------------------------------
+
+	app.UpgradeKeeper.SetUpgradeHandler(
+		AddDexStoreUpgradeName,
+		func(ctx context.Context, plan upgradetypes.Plan, fromVM module.VersionMap) (module.VersionMap, error) {
+			// fromVM is read from x/upgrade's own on-chain VersionMap store.
+			// Because x/upgrade is being wired into this chain for the
+			// first time in this very release (it did not exist in any
+			// earlier binary), that store starts out completely empty --
+			// fromVM has NO entries at all, not just a missing "dex" entry.
+			//
+			// Handing an empty fromVM straight to RunMigrations would make
+			// it treat every already-existing module (auth, bank, staking,
+			// distribution, slashing, gov, consensus, counter, and upgrade
+			// itself) as brand new too, and call each one's InitGenesis
+			// with its DEFAULT (empty) genesis -- which would wipe real
+			// account balances, delegations and every other bit of
+			// existing chain state.
+			//
+			// So: back-fill fromVM with the CURRENT ConsensusVersion of
+			// every module that already exists on this chain (upgrade
+			// included -- it has no InitGenesis work of its own to do;
+			// ApplyUpgrade sets its version-map state explicitly right
+			// after this handler returns), and deliberately leave out only
+			// `dex`, which really is new. RunMigrations then runs an
+			// ordinary version-diff migration (a no-op, since nothing
+			// actually changed) for every existing module, and calls
+			// InitGenesis with DefaultGenesis only for dex -- which is
+			// exactly the "add a new module's store to a running chain"
+			// pattern documented for module.Manager.RunMigrations.
+			for name, mod := range app.ModuleManager.Modules {
+				if name == dextypes.ModuleName {
+					continue
+				}
+				if _, exists := fromVM[name]; exists {
+					continue
+				}
+				if hasCV, ok := mod.(module.HasConsensusVersion); ok {
+					fromVM[name] = hasCV.ConsensusVersion()
+				}
+			}
+
+			return app.ModuleManager.RunMigrations(ctx, app.configurator, fromVM)
+		},
+	)
+
+	upgradeInfo, err := app.UpgradeKeeper.ReadUpgradeInfoFromDisk()
+	if err != nil {
+		panic(fmt.Errorf("failed to read upgrade info from disk: %w", err))
+	}
+	app.addDexStoreUpgradeInfo = upgradeInfo
+
+	if upgradeInfo.Name == AddDexStoreUpgradeName && !app.UpgradeKeeper.IsSkipHeight(upgradeInfo.Height) {
+		storeUpgrades := storetypes.StoreUpgrades{
+			// Both stores are new to this chain's history: `upgrade`'s
+			// store is created by this very release, same as `dex`'s.
+			Added: []string{upgradetypes.StoreKey, dextypes.StoreKey},
+		}
+		// UpgradeStoreLoader only actually runs LoadLatestVersionAndUpgrade
+		// on the single block where upgradeInfo.Height == last committed
+		// version + 1; every other startup (before or long after that
+		// height) it transparently falls back to the normal store loader.
+		// It is therefore safe to set this unconditionally on every start
+		// once upgrade-info.json records this plan name.
+		app.SetStoreLoader(upgradetypes.UpgradeStoreLoader(upgradeInfo.Height, &storeUpgrades))
+	}
 
 	// initialize stores
 	app.MountKVStores(keys)
@@ -542,14 +703,52 @@ func (app *ExampleApp) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) 
 }
 
 // PreBlocker runs the module manager's PreBlock hooks (e.g. auth's unordered
-// transaction pruning). This method is defined directly on ExampleApp so it
-// shadows the embedded *baseapp.BaseApp's own PreBlocker() getter; passing
-// app.PreBlocker (no call) as a method value to SetPreBlocker wires this
-// implementation in. Previously this line called app.PreBlocker() (with
-// parens), which invokes BaseApp's getter and returns whatever preBlocker
-// was already set — nil, since this is the very call that was supposed to
-// set it. That compiled cleanly but silently disabled all PreBlock logic.
-func (app *ExampleApp) PreBlocker(ctx sdk.Context, _ *abci.RequestFinalizeBlock) (*sdk.ResponsePreBlock, error) {
+// transaction pruning, and -- first in order -- x/upgrade's own PreBlocker,
+// which applies any due, scheduled upgrade). This method is defined
+// directly on ExampleApp so it shadows the embedded *baseapp.BaseApp's own
+// PreBlocker() getter; passing app.PreBlocker (no call) as a method value to
+// SetPreBlocker wires this implementation in. Previously this line called
+// app.PreBlocker() (with parens), which invokes BaseApp's getter and
+// returns whatever preBlocker was already set — nil, since this is the
+// very call that was supposed to set it. That compiled cleanly but
+// silently disabled all PreBlock logic.
+//
+// It also carries a one-time bootstrap step for AddDexStoreUpgradeName.
+// x/upgrade's own PreBlocker (called below via ModuleManager.PreBlock)
+// only invokes a registered UpgradeHandler when it finds a matching Plan
+// already scheduled ON-CHAIN, in x/upgrade's own store -- normally put
+// there ahead of time by a passed MsgSoftwareUpgrade governance proposal,
+// while the OLD binary (which already has x/upgrade) is still running.
+// That path is impossible here: x/upgrade's own store does not exist
+// before this exact block (it is created by the very same
+// LoadLatestVersionAndUpgrade call, driven by upgrade-info.json, that also
+// creates `dex`'s store -- see NewExampleApp above), so there was never an
+// earlier point at which any binary could have scheduled a Plan in it.
+//
+// Keeper.ScheduleUpgrade explicitly supports scheduling a Plan for the
+// CURRENT height from within PreBlock/BeginBlock ("allow for the
+// possibility of chains to schedule upgrades in begin block of the same
+// block as a strategy for emergency hard fork recoveries" -- see its
+// implementation). Doing that here, immediately before
+// ModuleManager.PreBlock runs x/upgrade's own PreBlocker, means this one
+// bootstrap event flows through x/upgrade's completely standard,
+// unmodified ApplyUpgrade -> RunMigrations pipeline -- the exact same code
+// path every subsequent, normal, governance-scheduled upgrade on this
+// chain will use. This can only fire once: it is gated on the exact block
+// height recorded in upgrade-info.json (read once at boot into
+// app.addDexStoreUpgradeInfo), and ScheduleUpgrade itself refuses to
+// reschedule a plan name that has already been applied and marked done.
+func (app *ExampleApp) PreBlocker(ctx sdk.Context, req *abci.RequestFinalizeBlock) (*sdk.ResponsePreBlock, error) {
+	if app.addDexStoreUpgradeInfo.Name == AddDexStoreUpgradeName &&
+		req.Height == app.addDexStoreUpgradeInfo.Height {
+		if err := app.UpgradeKeeper.ScheduleUpgrade(ctx, upgradetypes.Plan{
+			Name:   AddDexStoreUpgradeName,
+			Height: req.Height,
+		}); err != nil {
+			return nil, fmt.Errorf("bootstrapping %s upgrade plan at height %d: %w", AddDexStoreUpgradeName, req.Height, err)
+		}
+	}
+
 	return app.ModuleManager.PreBlock(ctx)
 }
 
