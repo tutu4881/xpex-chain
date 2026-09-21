@@ -3,6 +3,7 @@ package keeper
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	sdkmath "cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -14,6 +15,14 @@ type msgServer struct {
 }
 
 var _ types.MsgServer = msgServer{}
+
+// emit publishes a typed event so off-chain indexers (see xpex-chain-dex) can
+// follow DEX activity from block results without re-parsing transactions.
+func emit(ctx context.Context, eventType string, attrs ...sdk.Attribute) {
+	sdk.UnwrapSDKContext(ctx).EventManager().EmitEvent(sdk.NewEvent(eventType, attrs...))
+}
+
+func poolIDString(id uint64) string { return strconv.FormatUint(id, 10) }
 
 func NewMsgServerImpl(k *Keeper) types.MsgServer {
 	return msgServer{Keeper: k}
@@ -103,6 +112,17 @@ func (k msgServer) CreatePool(
 	if err := k.SetLP(ctx, poolID, msg.Sender, totalLP.String()); err != nil {
 		return nil, fmt.Errorf("save LP balance: %w", err)
 	}
+
+	emit(ctx, "xpex.dex.pool_created",
+		sdk.NewAttribute("pool_id", poolIDString(poolID)),
+		sdk.NewAttribute("sender", msg.Sender),
+		sdk.NewAttribute("token_a", msg.TokenA),
+		sdk.NewAttribute("token_b", msg.TokenB),
+		sdk.NewAttribute("amount_a", amountA.String()),
+		sdk.NewAttribute("amount_b", amountB.String()),
+		sdk.NewAttribute("fee_bps", fee.String()),
+		sdk.NewAttribute("lp_minted", totalLP.String()),
+	)
 
 	return &types.MsgCreatePoolResponse{
 		PoolId: poolID,
@@ -211,6 +231,16 @@ func (k msgServer) AddLiquidity(
 	); err != nil {
 		return nil, fmt.Errorf("save LP balance: %w", err)
 	}
+
+	emit(ctx, "xpex.dex.liquidity_added",
+		sdk.NewAttribute("pool_id", poolIDString(msg.PoolId)),
+		sdk.NewAttribute("sender", msg.Sender),
+		sdk.NewAttribute("amount_a", usedA.String()),
+		sdk.NewAttribute("amount_b", usedB.String()),
+		sdk.NewAttribute("lp_received", lpReceived.String()),
+		sdk.NewAttribute("reserve_a", pool.ReserveA),
+		sdk.NewAttribute("reserve_b", pool.ReserveB),
+	)
 
 	return &types.MsgAddLiquidityResponse{
 		LpReceived: lpReceived.String(),
@@ -342,6 +372,14 @@ func (k msgServer) RemoveLiquidity(
 		return nil, fmt.Errorf("save LP balance: %w", err)
 	}
 
+	emit(ctx, "xpex.dex.liquidity_removed",
+		sdk.NewAttribute("pool_id", poolIDString(msg.PoolId)),
+		sdk.NewAttribute("sender", msg.Sender),
+		sdk.NewAttribute("lp_amount", lpAmount.String()),
+		sdk.NewAttribute("amount_a", amountA.String()),
+		sdk.NewAttribute("amount_b", amountB.String()),
+	)
+
 	return &types.MsgRemoveLiquidityResponse{
 		AmountA: amountA.String(),
 		AmountB: amountB.String(),
@@ -457,6 +495,19 @@ func (k msgServer) Swap(
 	if err := k.SetPool(ctx, pool); err != nil {
 		return nil, fmt.Errorf("save pool: %w", err)
 	}
+
+	emit(ctx, "xpex.dex.swap",
+		sdk.NewAttribute("pool_id", poolIDString(msg.PoolId)),
+		sdk.NewAttribute("sender", msg.Sender),
+		sdk.NewAttribute("offer_denom", msg.OfferDenom),
+		sdk.NewAttribute("offer_amount", amountIn.String()),
+		sdk.NewAttribute("receive_denom", outputDenom),
+		sdk.NewAttribute("receive_amount", amountOut.String()),
+		sdk.NewAttribute("token_a", pool.TokenA),
+		sdk.NewAttribute("token_b", pool.TokenB),
+		sdk.NewAttribute("reserve_a", pool.ReserveA),
+		sdk.NewAttribute("reserve_b", pool.ReserveB),
+	)
 
 	return &types.MsgSwapResponse{
 		ReceiveAmount: amountOut.String(),

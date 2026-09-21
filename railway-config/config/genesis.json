@@ -1,5 +1,5 @@
 {
-  "genesis_time": "2026-08-23T20:31:26.888739298Z",
+  "genesis_time": "2026-09-21T16:00:00Z",
   "chain_id": "xpex-1",
   "initial_height": "1",
   "consensus_params": {
@@ -71,6 +71,10 @@
           "address": "cosmos187vl5nunwfs4rqzdnwyce8q3u25wdanejvej4n",
           "coins": [
             {
+              "denom": "uusdt",
+              "amount": "1000000000000"
+            },
+            {
               "denom": "uxpx",
               "amount": "99999900000000"
             }
@@ -96,6 +100,10 @@
         }
       ],
       "supply": [
+        {
+          "denom": "uusdt",
+          "amount": "1000000000000"
+        },
         {
           "denom": "uxpx",
           "amount": "100000100000000"
@@ -125,6 +133,29 @@
           "name": "XPEX",
           "symbol": "XPX",
           "uri": "https://xpexpex.com/token",
+          "uri_hash": ""
+        },
+        {
+          "description": "USDT-denominated asset on XPEX Chain (chain-native; not issued by Tether)",
+          "denom_units": [
+            {
+              "denom": "uusdt",
+              "exponent": 0,
+              "aliases": [
+                "microUSDT"
+              ]
+            },
+            {
+              "denom": "USDT",
+              "exponent": 6,
+              "aliases": []
+            }
+          ],
+          "base": "uusdt",
+          "display": "USDT",
+          "name": "USDT (XPEX Chain)",
+          "symbol": "USDT",
+          "uri": "",
           "uri_hash": ""
         }
       ],
@@ -296,6 +327,11 @@
       "redelegations": [],
       "exported": false
     },
-    "vesting": {}
+    "vesting": {},
+    "dex": {
+      "next_pool_id": "1",
+      "pools": []
+    },
+    "upgrade": {}
   }
 }

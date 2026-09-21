@@ -7,6 +7,7 @@ echo "======================================"
 
 HOME_DIR="/data/.exampleapp"
 IMAGE_GENESIS="/opt/xpex/genesis.json"
+RESET_MARKER="$HOME_DIR/.chain-reset-id"
 
 mkdir -p "$HOME_DIR/config"
 mkdir -p "$HOME_DIR/data"
@@ -15,25 +16,13 @@ echo "PORT=${PORT:-not-set}"
 echo "RAILWAY_TCP_PROXY_DOMAIN=${RAILWAY_TCP_PROXY_DOMAIN:-not-set}"
 echo "RAILWAY_TCP_PROXY_PORT=${RAILWAY_TCP_PROXY_PORT:-not-set}"
 
-if [ ! -f "$HOME_DIR/config/genesis.json" ]; then
-    echo "Genesis not found in persistent volume."
-
-    if [ ! -f "$IMAGE_GENESIS" ]; then
-        echo "ERROR: genesis template not found at $IMAGE_GENESIS"
-        exit 1
-    fi
-
-    echo "Installing genesis into persistent volume..."
-    cp "$IMAGE_GENESIS" "$HOME_DIR/config/genesis.json"
-else
-    echo "Genesis already exists in persistent volume."
+if [ ! -f "$IMAGE_GENESIS" ]; then
+    echo "ERROR: genesis template not found at $IMAGE_GENESIS"
+    exit 1
 fi
 
-echo "Genesis found."
-
-
 # --------------------------------------------------
-# Initialize config
+# Initialize config (first start on an empty volume)
 # --------------------------------------------------
 
 if [ ! -f "$HOME_DIR/config/config.toml" ]; then
@@ -41,8 +30,42 @@ if [ ! -f "$HOME_DIR/config/config.toml" ]; then
 
     /usr/local/bin/xpexd init XPEX \
         --home "$HOME_DIR" \
-        --chain-id xpex-1
+        --chain-id xpex-1 \
+        --overwrite
 fi
+
+# --------------------------------------------------
+# Controlled chain reset
+#
+# Railway gives no shell on the volume, so a reset is driven by a variable:
+# set CHAIN_RESET_ID to any new value and the NEXT start wipes the chain
+# database and re-installs the genesis baked into the image. node_key.json and
+# the validator key are kept. Starting again with the same value does nothing,
+# so it can stay set safely.
+# --------------------------------------------------
+
+CURRENT_RESET_ID=""
+if [ -f "$RESET_MARKER" ]; then
+    CURRENT_RESET_ID="$(cat "$RESET_MARKER")"
+fi
+
+if [ -n "${CHAIN_RESET_ID:-}" ] && [ "$CHAIN_RESET_ID" != "$CURRENT_RESET_ID" ]; then
+    echo "CHAIN_RESET_ID changed ('$CURRENT_RESET_ID' -> '$CHAIN_RESET_ID'): wiping chain data"
+    rm -rf "$HOME_DIR/data"
+    mkdir -p "$HOME_DIR/data"
+    rm -f "$HOME_DIR/config/genesis.json" "$HOME_DIR/config/addrbook.json"
+    printf '{\n  "height": "0",\n  "round": 0,\n  "step": 0\n}\n' > "$HOME_DIR/data/priv_validator_state.json"
+    printf '%s' "$CHAIN_RESET_ID" > "$RESET_MARKER"
+fi
+
+if [ ! -f "$HOME_DIR/config/genesis.json" ]; then
+    echo "Installing genesis from image..."
+    cp "$IMAGE_GENESIS" "$HOME_DIR/config/genesis.json"
+else
+    echo "Genesis already exists in persistent volume."
+fi
+
+echo "Genesis chain_id: $(python3 -c "import json;print(json.load(open('$HOME_DIR/config/genesis.json'))['chain_id'])")"
 
 # --------------------------------------------------
 # Validator key
