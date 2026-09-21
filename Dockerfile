@@ -5,9 +5,18 @@ RUN apk add --no-cache make git libc-dev bash gcc linux-headers
 WORKDIR /app
 
 COPY go.mod go.sum ./
+RUN cp go.sum /tmp/go.sum.orig && cp go.mod /tmp/go.mod.orig
 RUN go mod download
 
 COPY . .
+
+# DIAGNOSTIC (temporary): repository go.sum is missing entries for x/upgrade's
+# dependencies. Regenerate here and print the difference so it can be committed.
+RUN go mod tidy 2>&1 | tail -5; \
+    echo "=== GO.SUM NEW LINES ==="; \
+    sort /tmp/go.sum.orig > /tmp/a.txt; sort go.sum > /tmp/b.txt; comm -13 /tmp/a.txt /tmp/b.txt; \
+    echo "=== GO.MOD DIFF ==="; diff /tmp/go.mod.orig go.mod || true; \
+    echo "=== END ==="
 
 RUN go build -o /xpexd ./exampled
 
