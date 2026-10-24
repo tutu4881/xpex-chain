@@ -243,6 +243,54 @@ PY
 echo "P2P_EXTERNAL_ADDRESS=$P2P_EXTERNAL_ADDRESS"
 echo "PERSISTENT_PEERS=$PERSISTENT_PEERS"
 # --------------------------------------------------
+# Block time (optional)
+#
+# TIMEOUT_COMMIT=15s makes the validator wait that long between blocks
+# (CometBFT [consensus] timeout_commit). Unset = leave config.toml untouched.
+# Fewer blocks = slower database growth and less RAM/CPU. Only the validator
+# produces blocks, so this only matters on the NODE_ROLE=validator service.
+# --------------------------------------------------
+
+if [ -n "${TIMEOUT_COMMIT:-}" ]; then
+    echo "Setting consensus timeout_commit=$TIMEOUT_COMMIT"
+    python3 - "$HOME_DIR/config/config.toml" "$TIMEOUT_COMMIT" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+p = Path(sys.argv[1])
+value = sys.argv[2].strip()
+
+if not re.fullmatch(r"\d+(ms|s|m)", value):
+    print(f"WARNING: TIMEOUT_COMMIT='{value}' is not like 15s/500ms/1m - ignored")
+    sys.exit(0)
+
+s = p.read_text()
+start = s.find("[consensus]")
+if start == -1:
+    print("WARNING: [consensus] section not found - timeout_commit unchanged")
+    sys.exit(0)
+end = s.find("\n[", start + 1)
+if end == -1:
+    end = len(s)
+
+lines = s[start:end].splitlines()
+changed = False
+for i, line in enumerate(lines):
+    if line.startswith("timeout_commit = "):
+        lines[i] = f'timeout_commit = "{value}"'
+        changed = True
+
+if not changed:
+    print("WARNING: timeout_commit key not present in [consensus] - unchanged")
+    sys.exit(0)
+
+p.write_text(s[:start] + "\n".join(lines) + s[end:])
+print(f"timeout_commit set to {value}")
+PY
+fi
+
+# --------------------------------------------------
 # Gas prices
 # --------------------------------------------------
 
@@ -268,6 +316,9 @@ sed -n '/^\[api\]/,/^\[/p' "$HOME_DIR/config/app.toml"
 
 echo "--- gRPC ---"
 sed -n '/^\[grpc\]/,/^\[/p' "$HOME_DIR/config/app.toml"
+
+echo "--- consensus timeout ---"
+grep -n "^timeout_commit" "$HOME_DIR/config/config.toml" || echo "timeout_commit not found"
 
 echo "======================================"
 echo "Starting XPEX..."
