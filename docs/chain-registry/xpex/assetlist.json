@@ -1,0 +1,48 @@
+{
+  "$schema": "../assetlist.schema.json",
+  "chain_name": "xpex",
+  "assets": [
+    {
+      "description": "XPX, the native staking and fee token of XPEX Chain.",
+      "denom_units": [
+        {
+          "denom": "uxpx",
+          "exponent": 0
+        },
+        {
+          "denom": "xpx",
+          "exponent": 6
+        }
+      ],
+      "base": "uxpx",
+      "name": "XPEX",
+      "display": "xpx",
+      "symbol": "XPX",
+      "type_asset": "sdk.coin",
+      "coingecko_id": "",
+      "images": [
+        {
+          "png": "https://xpexpex.com/android-chrome-512x512.png"
+        }
+      ]
+    },
+    {
+      "description": "XUSD, an unbacked chain-native unit of account on the XPEX DEX. Not Tether, not a stablecoin.",
+      "denom_units": [
+        {
+          "denom": "uxusd",
+          "exponent": 0
+        },
+        {
+          "denom": "xusd",
+          "exponent": 6
+        }
+      ],
+      "base": "uxusd",
+      "name": "XPEX USD",
+      "display": "xusd",
+      "symbol": "XUSD",
+      "type_asset": "sdk.coin"
+    }
+  ]
+}
