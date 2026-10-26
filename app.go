@@ -255,8 +255,8 @@ func NewExampleApp(
 		runtime.NewKVStoreService(keys[authtypes.StoreKey]),
 		authtypes.ProtoBaseAccount,
 		maccPerms,
-		authcodec.NewBech32Codec(sdk.Bech32MainPrefix),
-		sdk.Bech32MainPrefix,
+		authcodec.NewBech32Codec(Bech32Prefix),
+		Bech32Prefix,
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 		authkeeper.WithUnorderedTransactions(true),
 	)
@@ -276,8 +276,8 @@ func NewExampleApp(
 		app.AccountKeeper,
 		app.BankKeeper,
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
-		authcodec.NewBech32Codec(sdk.Bech32PrefixValAddr),
-		authcodec.NewBech32Codec(sdk.Bech32PrefixConsAddr),
+		authcodec.NewBech32Codec(Bech32PrefixValAddr),
+		authcodec.NewBech32Codec(Bech32PrefixConsAddr),
 	)
 	app.DistrKeeper = distrkeeper.NewKeeper(
 		appCodec,
@@ -358,7 +358,7 @@ func NewExampleApp(
 		// counter tutorial app wiring 5: register the counter module below
 		counter.NewAppModule(appCodec, app.CounterKeeper),
 		dex.NewAppModule(appCodec, app.DexKeeper),
-		upgrade.NewAppModule(app.UpgradeKeeper, authcodec.NewBech32Codec(sdk.Bech32MainPrefix)),
+		upgrade.NewAppModule(app.UpgradeKeeper, authcodec.NewBech32Codec(Bech32Prefix)),
 	)
 
 	// Record the module manager's own version map as the "initial" version

@@ -34,7 +34,7 @@ if [ ! -f "$HOME_DIR/config/config.toml" ]; then
 
     /usr/local/bin/xpexd init XPEX \
         --home "$HOME_DIR" \
-        --chain-id xpex-1 \
+        --chain-id "${CHAIN_ID:-xpex-2}" \
         --overwrite
 fi
 
@@ -70,6 +70,15 @@ else
 fi
 
 echo "Genesis chain_id: $(python3 -c "import json;print(json.load(open('$HOME_DIR/config/genesis.json'))['chain_id'])")"
+
+# A genesis without any validator (e.g. the xpex-2 *template*, before the operator's gentx is collected)
+# can never produce blocks. Fail loudly instead of looping.
+python3 - "$HOME_DIR/config/genesis.json" <<'PY' || exit 1
+import json, sys
+g = json.load(open(sys.argv[1]))["app_state"]
+if not g["genutil"]["gen_txs"] and not g["staking"].get("validators"):
+    sys.exit("ERROR: genesis has no validator (no gen_txs). Finish docs/RELAUNCH.md and commit the collected genesis as railway-config/config/genesis.json.")
+PY
 
 # --------------------------------------------------
 # Validator key
