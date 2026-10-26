@@ -1,29 +1,9 @@
 {
-  "genesis_time": "2026-09-22T05:57:54Z",
-  "chain_id": "xpex-1",
-  "initial_height": "1",
-  "consensus_params": {
-    "block": {
-      "max_bytes": "22020096",
-      "max_gas": "-1"
-    },
-    "evidence": {
-      "max_age_num_blocks": "100000",
-      "max_age_duration": "172800000000000",
-      "max_bytes": "1048576"
-    },
-    "validator": {
-      "pub_key_types": [
-        "ed25519"
-      ]
-    },
-    "version": {
-      "app": "0"
-    },
-    "abci": {
-      "vote_extensions_enable_height": "0"
-    }
-  },
+  "app_name": "\u003cappd\u003e",
+  "app_version": "",
+  "genesis_time": "2026-11-01T12:00:00Z",
+  "chain_id": "xpex-2",
+  "initial_height": 1,
   "app_hash": "",
   "app_state": {
     "auth": {
@@ -37,14 +17,14 @@
       "accounts": [
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "address": "cosmos1dy8s3hyphzn6h8p6wx250760pee305flsqw90s",
+          "address": "xpex1dy8s3hyphzn6h8p6wx250760pee305fl7we8fy",
           "pub_key": null,
           "account_number": "0",
           "sequence": "0"
         },
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "address": "cosmos187vl5nunwfs4rqzdnwyce8q3u25wdanejvej4n",
+          "address": "xpex187vl5nunwfs4rqzdnwyce8q3u25wdaneuzwsn8",
           "pub_key": {
             "@type": "/cosmos.crypto.secp256k1.PubKey",
             "key": "AqK0lzZ+mI2wOBh80weWZONQbiYv1qI6fpluJK0ax7qD"
@@ -54,7 +34,7 @@
         },
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "address": "cosmos13ye262r8zhcfn786hglcz45v0rjm2xw8tetrsk",
+          "address": "xpex13ye262r8zhcfn786hglcz45v0rjm2xw89hupkz",
           "pub_key": null,
           "account_number": "2",
           "sequence": "0"
@@ -68,20 +48,20 @@
       },
       "balances": [
         {
-          "address": "cosmos187vl5nunwfs4rqzdnwyce8q3u25wdanejvej4n",
+          "address": "xpex187vl5nunwfs4rqzdnwyce8q3u25wdaneuzwsn8",
           "coins": [
-            {
-              "denom": "uusdt",
-              "amount": "10000000"
-            },
             {
               "denom": "uxpx",
               "amount": "99999900000000"
+            },
+            {
+              "denom": "uxusd",
+              "amount": "10000000"
             }
           ]
         },
         {
-          "address": "cosmos1dy8s3hyphzn6h8p6wx250760pee305flsqw90s",
+          "address": "xpex1dy8s3hyphzn6h8p6wx250760pee305fl7we8fy",
           "coins": [
             {
               "denom": "uxpx",
@@ -90,7 +70,7 @@
           ]
         },
         {
-          "address": "cosmos13ye262r8zhcfn786hglcz45v0rjm2xw8tetrsk",
+          "address": "xpex13ye262r8zhcfn786hglcz45v0rjm2xw89hupkz",
           "coins": [
             {
               "denom": "uxpx",
@@ -101,12 +81,12 @@
       ],
       "supply": [
         {
-          "denom": "uusdt",
-          "amount": "10000000"
-        },
-        {
           "denom": "uxpx",
           "amount": "100000100000000"
+        },
+        {
+          "denom": "uxusd",
+          "amount": "10000000"
         }
       ],
       "denom_metadata": [
@@ -136,25 +116,23 @@
           "uri_hash": ""
         },
         {
-          "description": "USDT-denominated asset on XPEX Chain (chain-native; not issued by Tether)",
+          "description": "Chain-native unit of account on XPEX Chain. Not backed by any asset and not a stablecoin; not issued by Tether.",
           "denom_units": [
             {
-              "denom": "uusdt",
+              "denom": "uxusd",
               "exponent": 0,
-              "aliases": [
-                "microUSDT"
-              ]
+              "aliases": []
             },
             {
-              "denom": "USDT",
+              "denom": "XUSD",
               "exponent": 6,
               "aliases": []
             }
           ],
-          "base": "uusdt",
-          "display": "USDT",
-          "name": "USDT (XPEX Chain)",
-          "symbol": "USDT",
+          "base": "uxusd",
+          "display": "XUSD",
+          "name": "XPEX USD (chain-native, unbacked)",
+          "symbol": "XUSD",
           "uri": "",
           "uri_hash": ""
         }
@@ -173,6 +151,10 @@
           }
         ]
       }
+    },
+    "dex": {
+      "next_pool_id": "1",
+      "pools": []
     },
     "distribution": {
       "params": {
@@ -214,10 +196,10 @@
                 },
                 "min_self_delegation": "1",
                 "delegator_address": "",
-                "validator_address": "cosmosvaloper187vl5nunwfs4rqzdnwyce8q3u25wdanehcd8eq",
+                "validator_address": "xpexvaloper187vl5nunwfs4rqzdnwyce8q3u25wdanehvkpak",
                 "pubkey": {
                   "@type": "/cosmos.crypto.ed25519.PubKey",
-                  "key": "a9yEvCrbBRCZklih9A3tphWUfengrS/cfGwHe2TdCQ4="
+                  "key": "45xqCEkCGOv+5c93PAXGJJ+POKLMcjhK8CZPKqm3Isg="
                 },
                 "value": {
                   "denom": "uxpx",
@@ -225,7 +207,7 @@
                 }
               }
             ],
-            "memo": "78a673c536efafa9441a8dc7098271f458b089f5@192.168.165.113:26656",
+            "memo": "58ca53c1d6fa663810df1603975c965e41c9b2db@192.168.165.113:26656",
             "timeout_height": "0",
             "unordered": false,
             "timeout_timestamp": null,
@@ -256,7 +238,7 @@
             "tip": null
           },
           "signatures": [
-            "PFYPhfHWAoqs834MxBKExgfaxmNA2mh3hkGNJh3NJg1u7ek0VuChRzy2O0PMV17qn+uJIu3NprqhPRBXgRuXLA=="
+            "abfAjzys09szyYRhba1SrwhchiYgSQ4Rdx54t2DGEOARQk50gu/cPCpRpcFjChT+MGcIvZEYlvtaumhN+CtkqA=="
           ]
         }
       ]
@@ -327,11 +309,31 @@
       "redelegations": [],
       "exported": false
     },
-    "vesting": {},
-    "dex": {
-      "next_pool_id": "1",
-      "pools": []
-    },
-    "upgrade": {}
+    "upgrade": {},
+    "vesting": {}
+  },
+  "consensus": {
+    "params": {
+      "block": {
+        "max_bytes": "22020096",
+        "max_gas": "-1"
+      },
+      "evidence": {
+        "max_age_num_blocks": "100000",
+        "max_age_duration": "172800000000000",
+        "max_bytes": "1048576"
+      },
+      "validator": {
+        "pub_key_types": [
+          "ed25519"
+        ]
+      },
+      "version": {
+        "app": "0"
+      },
+      "abci": {
+        "vote_extensions_enable_height": "0"
+      }
+    }
   }
 }
