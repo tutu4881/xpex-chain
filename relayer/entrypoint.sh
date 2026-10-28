@@ -150,4 +150,22 @@ if [ "$RELAYER_CREATE_CHANNEL" = "1" ]; then
   fi
 fi
 
+# Optional one-off end-to-end test (RELAYER_TEST_TRANSFER=1): send 0.1 XPX from the relayer wallet to its own
+# address on the counterparty, then 0.05 of the received voucher back. Remove the variable afterwards.
+if [ "${RELAYER_TEST_TRANSFER:-0}" = "1" ]; then
+  SRC_CH="${TEST_SRC_CHANNEL:-channel-0}"
+  DST_CH="${TEST_DST_CHANNEL:-channel-11860}"
+  VOUCHER="ibc/$(printf 'transfer/%s/uxpx' "$DST_CH" | sha256sum | awk '{print toupper($1)}')"
+  (
+    sleep 30
+    echo "TEST: sending 100000uxpx ${XPEX_CHAIN_ID}/${SRC_CH} -> ${CP_CHAIN_ID}"
+    hermes tx ft-transfer --src-chain "$XPEX_CHAIN_ID" --dst-chain "$CP_CHAIN_ID" --src-port transfer --src-channel "$SRC_CH" \
+      --amount 100000 --denom uxpx --timeout-seconds 900 2>&1 | grep -E "SUCCESS|ERROR|Error" | head -n 3 | sed 's/^/TEST: /'
+    sleep 180
+    echo "TEST: sending 50000 ${VOUCHER} back ${CP_CHAIN_ID}/${DST_CH} -> ${XPEX_CHAIN_ID}"
+    hermes tx ft-transfer --src-chain "$CP_CHAIN_ID" --dst-chain "$XPEX_CHAIN_ID" --src-port transfer --src-channel "$DST_CH" \
+      --amount 50000 --denom "$VOUCHER" --timeout-seconds 900 2>&1 | grep -E "SUCCESS|ERROR|Error" | head -n 3 | sed 's/^/TEST: /'
+  ) &
+fi
+
 exec hermes start
