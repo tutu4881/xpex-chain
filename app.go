@@ -768,6 +768,8 @@ func (app *ExampleApp) EndBlocker(ctx sdk.Context) (sdk.EndBlock, error) {
 	if err := app.burnPending(ctx); err != nil {
 		return res, err
 	}
+	// Keep stores that can stay empty non-empty, or every REST/gRPC query fails (see storemarker.go).
+	app.ensureStoresNotEmpty(ctx)
 	return res, nil
 }
 
