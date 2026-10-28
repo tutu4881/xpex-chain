@@ -68,6 +68,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/protocolpool"
 	protocolpoolkeeper "github.com/cosmos/cosmos-sdk/x/protocolpool/keeper"
 	protocolpooltypes "github.com/cosmos/cosmos-sdk/x/protocolpool/types"
+
 	"github.com/cosmos/cosmos-sdk/x/slashing"
 	slashingkeeper "github.com/cosmos/cosmos-sdk/x/slashing/keeper"
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
@@ -79,6 +80,17 @@ import (
 	upgradekeeper "github.com/cosmos/cosmos-sdk/x/upgrade/keeper"
 	upgradetypes "github.com/cosmos/cosmos-sdk/x/upgrade/types"
 	"github.com/cosmos/gogoproto/proto"
+	ibctransfer "github.com/cosmos/ibc-go/v11/modules/apps/transfer"
+	ibctransferkeeper "github.com/cosmos/ibc-go/v11/modules/apps/transfer/keeper"
+	ibctransfertypes "github.com/cosmos/ibc-go/v11/modules/apps/transfer/types"
+	ibctransferv2 "github.com/cosmos/ibc-go/v11/modules/apps/transfer/v2"
+	ibc "github.com/cosmos/ibc-go/v11/modules/core"
+	porttypes "github.com/cosmos/ibc-go/v11/modules/core/05-port/types"
+	ibcante "github.com/cosmos/ibc-go/v11/modules/core/ante"
+	ibcapi "github.com/cosmos/ibc-go/v11/modules/core/api"
+	ibcexported "github.com/cosmos/ibc-go/v11/modules/core/exported"
+	ibckeeper "github.com/cosmos/ibc-go/v11/modules/core/keeper"
+	ibctm "github.com/cosmos/ibc-go/v11/modules/light-clients/07-tendermint"
 	"github.com/spf13/cast"
 
 	// counter tutorial app wiring 1: add counter imports below
@@ -123,6 +135,8 @@ var (
 		protocolpooltypes.ProtocolPoolEscrowAccount: nil,
 		// anything sent here is burned at the end of the block (see burn.go)
 		BurnModuleName: {authtypes.Burner},
+		// IBC transfer escrows native coins and mints/burns vouchers for coins that arrive from other chains
+		ibctransfertypes.ModuleName: {authtypes.Minter, authtypes.Burner},
 	}
 )
 
@@ -160,6 +174,10 @@ type ExampleApp struct {
 	FeeGrantKeeper     feegrantkeeper.Keeper
 	AuthzKeeper        authzkeeper.Keeper
 	ProtocolPoolKeeper protocolpoolkeeper.Keeper
+
+	// IBC (ibc-go v11): core keeper must be a pointer so the router can be set on it
+	IBCKeeper      *ibckeeper.Keeper
+	TransferKeeper *ibctransferkeeper.Keeper
 
 	// the module manager
 	ModuleManager      *module.Manager
@@ -228,6 +246,8 @@ func NewExampleApp(
 		feegrant.StoreKey,
 		evidencetypes.StoreKey,
 		protocolpooltypes.StoreKey,
+		ibcexported.StoreKey,
+		ibctransfertypes.StoreKey,
 	)
 
 	if err := bApp.RegisterStreamingServices(appOpts, keys); err != nil {
@@ -399,6 +419,37 @@ func NewExampleApp(
 		app.BankKeeper,
 	)
 
+	// ------------------------------------------------------------------
+	// IBC: core + ICS-20 token transfer + the Tendermint light client.
+	// Channels are opened by a relayer (nothing is connected until then).
+	// ------------------------------------------------------------------
+	govAuthority := authtypes.NewModuleAddress(govtypes.ModuleName).String()
+	app.IBCKeeper = ibckeeper.NewKeeper(
+		appCodec,
+		runtime.NewKVStoreService(keys[ibcexported.StoreKey]),
+		app.UpgradeKeeper,
+		govAuthority,
+	)
+	app.TransferKeeper = ibctransferkeeper.NewKeeper(
+		appCodec,
+		app.AccountKeeper.AddressCodec(),
+		runtime.NewKVStoreService(keys[ibctransfertypes.StoreKey]),
+		app.IBCKeeper.ChannelKeeper,
+		app.MsgServiceRouter(),
+		app.AccountKeeper,
+		app.BankKeeper,
+		govAuthority,
+	)
+	ibcRouter := porttypes.NewRouter()
+	ibcRouter.AddRoute(ibctransfertypes.ModuleName, ibctransfer.NewIBCModule(app.TransferKeeper))
+	app.IBCKeeper.SetRouter(ibcRouter)
+	ibcRouterV2 := ibcapi.NewRouter()
+	ibcRouterV2.AddRoute(ibctransfertypes.PortID, ibctransferv2.NewIBCModule(app.TransferKeeper))
+	app.IBCKeeper.SetRouterV2(ibcRouterV2)
+
+	tmLightClientModule := ibctm.NewLightClientModule(appCodec, app.IBCKeeper.ClientKeeper.GetStoreProvider())
+	app.IBCKeeper.ClientKeeper.AddRoute(ibctm.ModuleName, &tmLightClientModule)
+
 	app.ModuleManager = module.NewManager(
 		genutil.NewAppModule(
 			app.AccountKeeper, app.StakingKeeper, app,
@@ -420,6 +471,9 @@ func NewExampleApp(
 		feegrantmodule.NewAppModule(appCodec, app.AccountKeeper, app.BankKeeper, app.FeeGrantKeeper, app.interfaceRegistry),
 		evidence.NewAppModule(app.EvidenceKeeper),
 		protocolpool.NewAppModule(app.ProtocolPoolKeeper, app.AccountKeeper, app.BankKeeper),
+		ibc.NewAppModule(app.IBCKeeper),
+		ibctransfer.NewAppModule(app.TransferKeeper),
+		ibctm.NewAppModule(tmLightClientModule),
 	)
 
 	// Record the module manager's own version map as the "initial" version
@@ -469,6 +523,8 @@ func NewExampleApp(
 		slashingtypes.ModuleName,
 		evidencetypes.ModuleName,
 		stakingtypes.ModuleName,
+		ibcexported.ModuleName,
+		ibctransfertypes.ModuleName,
 		authz.ModuleName,
 		// counter tutorial app wiring 6: add the counter module to genesis order below
 		countertypes.ModuleName,
@@ -479,6 +535,8 @@ func NewExampleApp(
 		banktypes.ModuleName,
 		govtypes.ModuleName,
 		stakingtypes.ModuleName,
+		ibcexported.ModuleName,
+		ibctransfertypes.ModuleName,
 		// counter tutorial app wiring 7: add the counter module to export order below
 		countertypes.ModuleName,
 		dextypes.ModuleName,
@@ -506,6 +564,8 @@ func NewExampleApp(
 		authz.ModuleName,
 		feegrant.ModuleName,
 		protocolpooltypes.ModuleName,
+		ibcexported.ModuleName,
+		ibctransfertypes.ModuleName,
 	}
 
 	exportModuleOrder := []string{
@@ -525,6 +585,8 @@ func NewExampleApp(
 		evidencetypes.ModuleName,
 		authz.ModuleName,
 		feegrant.ModuleName,
+		ibcexported.ModuleName,
+		ibctransfertypes.ModuleName,
 	}
 
 	app.ModuleManager.SetOrderInitGenesis(genesisModuleOrder...)
@@ -696,8 +758,18 @@ func (app *ExampleApp) setAnteHandler(txConfig client.TxConfig) {
 		panic(err)
 	}
 
+	// IBC: reject relay transactions whose packets were all already relayed (saves relayers' fees).
+	ibcDecorator := ibcante.NewRedundantRelayDecorator(app.IBCKeeper)
+	terminator := func(ctx sdk.Context, _ sdk.Tx, _ bool) (sdk.Context, error) { return ctx, nil }
+
 	// Set the AnteHandler for the app
-	app.SetAnteHandler(anteHandler)
+	app.SetAnteHandler(func(ctx sdk.Context, tx sdk.Tx, simulate bool) (sdk.Context, error) {
+		newCtx, err := anteHandler(ctx, tx, simulate)
+		if err != nil {
+			return newCtx, err
+		}
+		return ibcDecorator.AnteHandle(newCtx, tx, simulate, terminator)
+	})
 }
 
 // RegisterAPIRoutes registers all application module routes with the provided
@@ -783,6 +855,16 @@ func (app *ExampleApp) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) 
 	var genesisState GenesisState
 	if err := json.Unmarshal(req.AppStateBytes, &genesisState); err != nil {
 		panic(err)
+	}
+	// Modules added after the genesis file was written (ibc, transfer, ...) get their default genesis,
+	// otherwise InitGenesis would skip them and leave their params unset.
+	for name, mod := range app.ModuleManager.Modules {
+		if _, ok := genesisState[name]; ok {
+			continue
+		}
+		if basics, ok := mod.(module.HasGenesisBasics); ok {
+			genesisState[name] = basics.DefaultGenesis(app.appCodec)
+		}
 	}
 	res, err := app.ModuleManager.InitGenesis(ctx, app.appCodec, genesisState)
 	if err != nil {

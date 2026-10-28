@@ -4,6 +4,10 @@ All notable changes to this repository are tracked here for agent context.
 
 ## [Unreleased]
 
+### Added
+
+- IBC with ibc-go v11.2.0: IBC core, ICS-20 token transfer (classic channels and IBC v2 routes) and the 07-tendermint light client, plus the redundant-relay ante decorator. The transfer module account can mint and burn (escrow of XPX, vouchers for incoming coins). Modules missing from genesis.json get their default genesis in InitChainer. No channel is open until a relayer creates one.
+
 ### Changed
 
 - Moved from the Cosmos SDK v0.54.0-rc.1 pre-release (Feb 2026) to the stable v0.54.4, CometBFT v0.39.0-beta.2 to v0.39.4, and the store module to its new path `github.com/cosmos/cosmos-sdk/store/v2`. The app constructor no longer takes a trace writer (removed in v0.54). This is the base for adding IBC (ibc-go v11 targets SDK v0.54 / CometBFT v0.39).

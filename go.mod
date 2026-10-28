@@ -22,6 +22,7 @@ require (
 	github.com/cosmos/cosmos-proto v1.0.0-beta.5
 	github.com/cosmos/cosmos-sdk v0.54.4
 	github.com/cosmos/gogoproto v1.7.2
+	github.com/cosmos/ibc-go/v11 v11.2.0
 	github.com/golang/protobuf v1.5.4
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/spf13/cobra v1.10.2
