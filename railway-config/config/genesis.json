@@ -1,5 +1,5 @@
 {
-  "app_name": "\u003cappd\u003e",
+  "app_name": "<appd>",
   "app_version": "",
   "genesis_time": "2026-10-26T08:00:00Z",
   "chain_id": "xpex-2",
@@ -310,7 +310,25 @@
       "exported": false
     },
     "upgrade": {},
-    "vesting": {}
+    "vesting": {},
+    "authz": {
+      "authorization": []
+    },
+    "feegrant": {
+      "allowances": []
+    },
+    "evidence": {
+      "evidence": []
+    },
+    "protocolpool": {
+      "continuous_funds": [],
+      "params": {
+        "enabled_distribution_denoms": [
+          "uxpx"
+        ],
+        "distribution_frequency": "1"
+      }
+    }
   },
   "consensus": {
     "params": {

@@ -41,6 +41,18 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/cosmos-sdk/x/auth/vesting"
 	vestingtypes "github.com/cosmos/cosmos-sdk/x/auth/vesting/types"
+	"github.com/cosmos/cosmos-sdk/x/authz"
+	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
+	authzmodule "github.com/cosmos/cosmos-sdk/x/authz/module"
+	"github.com/cosmos/cosmos-sdk/x/evidence"
+	evidencekeeper "github.com/cosmos/cosmos-sdk/x/evidence/keeper"
+	evidencetypes "github.com/cosmos/cosmos-sdk/x/evidence/types"
+	"github.com/cosmos/cosmos-sdk/x/feegrant"
+	feegrantkeeper "github.com/cosmos/cosmos-sdk/x/feegrant/keeper"
+	feegrantmodule "github.com/cosmos/cosmos-sdk/x/feegrant/module"
+	"github.com/cosmos/cosmos-sdk/x/protocolpool"
+	protocolpoolkeeper "github.com/cosmos/cosmos-sdk/x/protocolpool/keeper"
+	protocolpooltypes "github.com/cosmos/cosmos-sdk/x/protocolpool/types"
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
@@ -107,6 +119,11 @@ var (
 		stakingtypes.BondedPoolName:    {authtypes.Burner, authtypes.Staking},
 		stakingtypes.NotBondedPoolName: {authtypes.Burner, authtypes.Staking},
 		govtypes.ModuleName:            {authtypes.Burner},
+		// community pool / treasury (x/protocolpool) and its escrow account
+		protocolpooltypes.ModuleName:                nil,
+		protocolpooltypes.ProtocolPoolEscrowAccount: nil,
+		// anything sent here is burned at the end of the block (see burn.go)
+		BurnModuleName: {authtypes.Burner},
 	}
 )
 
@@ -139,6 +156,11 @@ type ExampleApp struct {
 	CounterKeeper *counterkeeper.Keeper
 	DexKeeper     *dexkeeper.Keeper
 	UpgradeKeeper *upgradekeeper.Keeper
+
+	EvidenceKeeper     evidencekeeper.Keeper
+	FeeGrantKeeper     feegrantkeeper.Keeper
+	AuthzKeeper        authzkeeper.Keeper
+	ProtocolPoolKeeper protocolpoolkeeper.Keeper
 
 	// the module manager
 	ModuleManager      *module.Manager
@@ -205,6 +227,10 @@ func NewExampleApp(
 		// counter tutorial app wiring 3: add the counter store key below
 		countertypes.StoreKey,
 		dextypes.StoreKey,
+		authzkeeper.StoreKey,
+		feegrant.StoreKey,
+		evidencetypes.StoreKey,
+		protocolpooltypes.StoreKey,
 	)
 
 	if err := bApp.RegisterStreamingServices(appOpts, keys); err != nil {
@@ -279,6 +305,15 @@ func NewExampleApp(
 		authcodec.NewBech32Codec(Bech32PrefixValAddr),
 		authcodec.NewBech32Codec(Bech32PrefixConsAddr),
 	)
+	// x/protocolpool is the chain's community pool / treasury. It replaces distribution's built-in
+	// community pool, so it must exist before the distribution keeper and be passed to it.
+	app.ProtocolPoolKeeper = protocolpoolkeeper.NewKeeper(
+		appCodec,
+		runtime.NewKVStoreService(keys[protocolpooltypes.StoreKey]),
+		app.AccountKeeper,
+		app.BankKeeper,
+		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
+	)
 	app.DistrKeeper = distrkeeper.NewKeeper(
 		appCodec,
 		runtime.NewKVStoreService(keys[distrtypes.StoreKey]),
@@ -287,6 +322,7 @@ func NewExampleApp(
 		app.StakingKeeper,
 		authtypes.FeeCollectorName,
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
+		distrkeeper.WithExternalCommunityPool(app.ProtocolPoolKeeper),
 	)
 	app.SlashingKeeper = slashingkeeper.NewKeeper(
 		appCodec,
@@ -301,6 +337,30 @@ func NewExampleApp(
 			app.SlashingKeeper.Hooks(),
 		),
 	)
+	// x/feegrant: let one account pay another's transaction fees.
+	app.FeeGrantKeeper = feegrantkeeper.NewKeeper(
+		appCodec,
+		runtime.NewKVStoreService(keys[feegrant.StoreKey]),
+		app.AccountKeeper,
+	)
+	// x/authz: let an account authorise another to act for it within limits (e.g. a capped spend allowance).
+	app.AuthzKeeper = authzkeeper.NewKeeper(
+		runtime.NewKVStoreService(keys[authzkeeper.StoreKey]),
+		appCodec,
+		app.MsgServiceRouter(),
+		app.AccountKeeper,
+	)
+	// x/evidence: punishes double-signing (tombstones the validator). Without it only downtime is punished.
+	evidenceKeeper := evidencekeeper.NewKeeper(
+		appCodec,
+		runtime.NewKVStoreService(keys[evidencetypes.StoreKey]),
+		app.StakingKeeper,
+		app.SlashingKeeper,
+		app.AccountKeeper.AddressCodec(),
+		runtime.ProvideCometInfoService(),
+	)
+	app.EvidenceKeeper = *evidenceKeeper
+
 	// Register the proposal types
 	// Deprecated: Avoid adding new handlers, instead use the new proposal flow
 	// by granting the governance module the right to execute the message.
@@ -359,6 +419,10 @@ func NewExampleApp(
 		counter.NewAppModule(appCodec, app.CounterKeeper),
 		dex.NewAppModule(appCodec, app.DexKeeper),
 		upgrade.NewAppModule(app.UpgradeKeeper, authcodec.NewBech32Codec(Bech32Prefix)),
+		authzmodule.NewAppModule(appCodec, app.AuthzKeeper, app.AccountKeeper, app.BankKeeper, app.interfaceRegistry),
+		feegrantmodule.NewAppModule(appCodec, app.AccountKeeper, app.BankKeeper, app.FeeGrantKeeper, app.interfaceRegistry),
+		evidence.NewAppModule(app.EvidenceKeeper),
+		protocolpool.NewAppModule(app.ProtocolPoolKeeper, app.AccountKeeper, app.BankKeeper),
 	)
 
 	// Record the module manager's own version map as the "initial" version
@@ -404,8 +468,11 @@ func NewExampleApp(
 	)
 	app.ModuleManager.SetOrderBeginBlockers(
 		distrtypes.ModuleName,
+		protocolpooltypes.ModuleName,
 		slashingtypes.ModuleName,
+		evidencetypes.ModuleName,
 		stakingtypes.ModuleName,
+		authz.ModuleName,
 		// counter tutorial app wiring 6: add the counter module to genesis order below
 		countertypes.ModuleName,
 		dextypes.ModuleName,
@@ -419,6 +486,8 @@ func NewExampleApp(
 		countertypes.ModuleName,
 		dextypes.ModuleName,
 		genutiltypes.ModuleName,
+		feegrant.ModuleName,
+		protocolpooltypes.ModuleName,
 	)
 	// NOTE: The genutils module must occur after staking so that pools are
 	// properly initialized with tokens from genesis accounts.
@@ -436,12 +505,17 @@ func NewExampleApp(
 		countertypes.ModuleName,
 		dextypes.ModuleName,
 		genutiltypes.ModuleName,
+		evidencetypes.ModuleName,
+		authz.ModuleName,
+		feegrant.ModuleName,
+		protocolpooltypes.ModuleName,
 	}
 
 	exportModuleOrder := []string{
 		consensusparamtypes.ModuleName,
 		upgradetypes.ModuleName,
 		authtypes.ModuleName,
+		protocolpooltypes.ModuleName, // must be exported before bank
 		banktypes.ModuleName,
 		distrtypes.ModuleName,
 		stakingtypes.ModuleName,
@@ -451,6 +525,9 @@ func NewExampleApp(
 		countertypes.ModuleName,
 		dextypes.ModuleName,
 		genutiltypes.ModuleName,
+		evidencetypes.ModuleName,
+		authz.ModuleName,
+		feegrant.ModuleName,
 	}
 
 	app.ModuleManager.SetOrderInitGenesis(genesisModuleOrder...)
@@ -608,6 +685,7 @@ func (app *ExampleApp) setAnteHandler(txConfig client.TxConfig) {
 		ante.HandlerOptions{
 			AccountKeeper:   app.AccountKeeper,
 			BankKeeper:      app.BankKeeper,
+			FeegrantKeeper:  app.FeeGrantKeeper,
 			SignModeHandler: txConfig.SignModeHandler(),
 			SigGasConsumer:  ante.DefaultSigVerificationGasConsumer,
 			SigVerifyOptions: []ante.SigVerificationDecoratorOption{
@@ -682,7 +760,15 @@ func (app *ExampleApp) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
 }
 
 func (app *ExampleApp) EndBlocker(ctx sdk.Context) (sdk.EndBlock, error) {
-	return app.ModuleManager.EndBlock(ctx)
+	res, err := app.ModuleManager.EndBlock(ctx)
+	if err != nil {
+		return res, err
+	}
+	// Whatever was sent to the burn account during this block is destroyed now.
+	if err := app.burnPending(ctx); err != nil {
+		return res, err
+	}
+	return res, nil
 }
 
 // GenesisState of the blockchain is represented here as a map of raw json
@@ -699,7 +785,13 @@ func (app *ExampleApp) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) 
 	if err := json.Unmarshal(req.AppStateBytes, &genesisState); err != nil {
 		panic(err)
 	}
-	return app.ModuleManager.InitGenesis(ctx, app.appCodec, genesisState)
+	res, err := app.ModuleManager.InitGenesis(ctx, app.appCodec, genesisState)
+	if err != nil {
+		return res, err
+	}
+	// Create the burn module account up front so nobody can occupy its address with an ordinary account.
+	app.AccountKeeper.GetModuleAccount(ctx, BurnModuleName)
+	return res, nil
 }
 
 // PreBlocker runs the module manager's PreBlock hooks (e.g. auth's unordered
@@ -777,6 +869,7 @@ func BlockedAddresses() map[string]bool {
 
 	// allow the following addresses to receive funds
 	delete(modAccAddrs, authtypes.NewModuleAddress(govtypes.ModuleName).String())
+	delete(modAccAddrs, authtypes.NewModuleAddress(BurnModuleName).String())
 
 	return modAccAddrs
 }
