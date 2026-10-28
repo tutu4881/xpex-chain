@@ -1,5 +1,5 @@
 # Hermes IBC relayer for XPEX Chain. Deployed as its own Railway service (root directory: relayer/).
-FROM debian:bookworm-slim
+FROM ubuntu:24.04
 
 ARG HERMES_VERSION=v1.13.3
 
@@ -14,7 +14,7 @@ RUN mkdir -p /tmp/hermes \
  && rm -rf /tmp/hermes /tmp/hermes.tgz \
  && hermes version
 
-RUN useradd -m -u 2000 hermes
+RUN useradd -m -u 2000 hermes || true
 USER hermes
 WORKDIR /home/hermes
 
