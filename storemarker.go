@@ -26,8 +26,11 @@ var storesThatCanStayEmpty = []string{
 	evidencetypes.StoreKey,
 }
 
-// ensureStoresNotEmpty writes the marker into each listed store when it is missing. After the first
-// block that runs this it is three cheap reads per block.
+// ensureStoresNotEmpty writes the marker into each listed store when it is missing. It runs in InitChainer,
+// so the stores are never empty at any committed version, and again in EndBlocker as a cheap safety net
+// (three reads per block). A data directory that already committed versions with an empty store cannot
+// be repaired by this: the node fails to load it ("failed to load store: version does not exist") and
+// the chain has to be restarted from genesis.
 func (app *ExampleApp) ensureStoresNotEmpty(ctx sdk.Context) {
 	for _, name := range storesThatCanStayEmpty {
 		key := app.GetKey(name)

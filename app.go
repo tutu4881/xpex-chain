@@ -793,6 +793,9 @@ func (app *ExampleApp) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) 
 	}
 	// Create the burn module account up front so nobody can occupy its address with an ordinary account.
 	app.AccountKeeper.GetModuleAccount(ctx, BurnModuleName)
+	// Write the non-empty markers at genesis already: a store that is empty when a version is committed
+	// cannot be loaded at that version later, not even by the node itself on restart (storemarker.go).
+	app.ensureStoresNotEmpty(ctx)
 	return res, nil
 }
 
