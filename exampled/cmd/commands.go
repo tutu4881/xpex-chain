@@ -2,13 +2,12 @@ package cmd
 
 import (
 	"errors"
-	"io"
 
 	cmtcfg "github.com/cometbft/cometbft/config"
 	dbm "github.com/cosmos/cosmos-db"
-	"github.com/tutu787878/xpex-chain"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/tutu787878/xpex-chain"
 
 	"cosmossdk.io/log/v2"
 	confixcmd "cosmossdk.io/tools/confix/cmd"
@@ -189,7 +188,6 @@ func txCommand() *cobra.Command {
 func newApp(
 	logger log.Logger,
 	db dbm.DB,
-	traceStore io.Writer,
 	appOpts servertypes.AppOptions,
 ) servertypes.Application {
 	baseappOptions := server.DefaultBaseappOptions(appOpts)
@@ -208,7 +206,7 @@ func newApp(
 	baseappOptions = append(baseappOptions, baseapp.SetIAVLSyncPruning(true))
 
 	return example.NewExampleApp(
-		logger, db, traceStore, true,
+		logger, db, true,
 		appOpts,
 		baseappOptions...,
 	)
@@ -218,7 +216,6 @@ func newApp(
 func appExport(
 	logger log.Logger,
 	db dbm.DB,
-	traceStore io.Writer,
 	height int64,
 	forZeroHeight bool,
 	jailAllowedAddrs []string,
@@ -236,13 +233,13 @@ func appExport(
 
 	var app *example.ExampleApp
 	if height != -1 {
-		app = example.NewExampleApp(logger, db, traceStore, false, appOpts)
+		app = example.NewExampleApp(logger, db, false, appOpts)
 
 		if err := app.LoadHeight(height); err != nil {
 			return servertypes.ExportedApp{}, err
 		}
 	} else {
-		app = example.NewExampleApp(logger, db, traceStore, true, appOpts)
+		app = example.NewExampleApp(logger, db, true, appOpts)
 	}
 
 	return app.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs, modulesToExport)

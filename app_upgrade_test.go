@@ -44,13 +44,12 @@ import (
 	"time"
 
 	"cosmossdk.io/log/v2"
-	"cosmossdk.io/store/metrics"
-	"cosmossdk.io/store/rootmulti"
-	storetypes "cosmossdk.io/store/types"
 	abci "github.com/cometbft/cometbft/abci/types"
 	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	dbm "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/cosmos-sdk/baseapp"
+	"github.com/cosmos/cosmos-sdk/store/v2/rootmulti"
+	storetypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
@@ -105,7 +104,7 @@ func TestUpgradeAddsDexStoreToExistingChain(t *testing.T) {
 	// "invalid memory address or nil pointer dereference" seen in
 	// iavl.(*Store).Commit() in the bug report. tools/storediag/main.go
 	// gets away with `nil` here only because it never calls Commit().
-	rs := rootmulti.NewStore(db, log.NewNopLogger(), metrics.NewNoOpMetrics())
+	rs := rootmulti.NewStore(db, log.NewNopLogger())
 	for _, key := range oldKeys {
 		rs.MountStoreWithDB(key, storetypes.StoreTypeIAVL, nil)
 	}
@@ -153,7 +152,7 @@ func TestUpgradeAddsDexStoreToExistingChain(t *testing.T) {
 		// variable under test.
 		emptyHome := t.TempDir()
 		appOpts := simtestutil.NewAppOptionsWithFlagHome(emptyHome)
-		_ = NewExampleApp(log.NewNopLogger(), db2a, nil, true, appOpts, baseapp.SetChainID("xpex-1"))
+		_ = NewExampleApp(log.NewNopLogger(), db2a, true, appOpts, baseapp.SetChainID("xpex-1"))
 	}()
 
 	// ------------------------------------------------------------------
@@ -175,7 +174,7 @@ func TestUpgradeAddsDexStoreToExistingChain(t *testing.T) {
 	require.NoError(t, err, "re-opening the fabricated data dir (phase 2b)")
 
 	appOpts := simtestutil.NewAppOptionsWithFlagHome(dataDir)
-	app := NewExampleApp(log.NewNopLogger(), db2b, nil, true, appOpts, baseapp.SetChainID("xpex-1"))
+	app := NewExampleApp(log.NewNopLogger(), db2b, true, appOpts, baseapp.SetChainID("xpex-1"))
 	defer func() { require.NoError(t, app.Close()) }()
 
 	require.Equal(t, lastHeight, app.LastBlockHeight(),

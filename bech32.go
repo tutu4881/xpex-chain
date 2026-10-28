@@ -5,12 +5,12 @@ import sdk "github.com/cosmos/cosmos-sdk/types"
 // Address prefixes of the XPEX chain. They were "cosmos" (the Cosmos Hub prefix) on xpex-1, which makes
 // wallets and explorers confuse XPEX addresses with Cosmos Hub ones; xpex-2 uses its own prefix.
 const (
-	Bech32Prefix             = "xpex"
-	Bech32PrefixAccPub       = Bech32Prefix + "pub"
-	Bech32PrefixValAddr      = Bech32Prefix + "valoper"
-	Bech32PrefixValPub       = Bech32Prefix + "valoperpub"
-	Bech32PrefixConsAddr     = Bech32Prefix + "valcons"
-	Bech32PrefixConsPub      = Bech32Prefix + "valconspub"
+	Bech32Prefix         = "xpex"
+	Bech32PrefixAccPub   = Bech32Prefix + "pub"
+	Bech32PrefixValAddr  = Bech32Prefix + "valoper"
+	Bech32PrefixValPub   = Bech32Prefix + "valoperpub"
+	Bech32PrefixConsAddr = Bech32Prefix + "valcons"
+	Bech32PrefixConsPub  = Bech32Prefix + "valconspub"
 )
 
 // init runs before anything else in this package and before the root command seals the SDK config,

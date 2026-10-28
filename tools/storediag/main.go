@@ -31,10 +31,10 @@ import (
 	"sort"
 
 	"cosmossdk.io/log/v2"
-	"cosmossdk.io/store/iavl"
-	"cosmossdk.io/store/rootmulti"
-	storetypes "cosmossdk.io/store/types"
 	dbm "github.com/cosmos/cosmos-db"
+	"github.com/cosmos/cosmos-sdk/store/v2/iavl"
+	"github.com/cosmos/cosmos-sdk/store/v2/rootmulti"
+	storetypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 )
 
 // Hardcoded to match the exact list in app.go's storetypes.NewKVStoreKeys(...)
@@ -80,7 +80,7 @@ func main() {
 	// panic before we get to inspect it.
 	keys := storetypes.NewKVStoreKeys(storeKeyNames...)
 
-	rs := rootmulti.NewStore(db, logger, nil)
+	rs := rootmulti.NewStore(db, logger)
 	for _, key := range keys {
 		rs.MountStoreWithDB(key, storetypes.StoreTypeIAVL, nil)
 	}
@@ -172,7 +172,6 @@ func main() {
 			commitID,
 			100,
 			false,
-			nil,
 		)
 		if err != nil {
 			fmt.Printf("  %-14s LoadStore(version=%d) FAILED: %v\\n", name, recordedVersion, err)

@@ -1,25 +1,26 @@
 module github.com/tutu787878/xpex-chain
 
-go 1.25.7
+go 1.26.5
 
 replace (
-	cosmossdk.io/client/v2 => cosmossdk.io/client/v2 v2.0.0-beta.10.0.20260213183303-059defddaf30
-	github.com/tidwall/btree => github.com/cosmos/btree v0.0.0-20250924232609-2c6195d95951
+	// same replaces as cosmos-sdk v0.54.4 simapp
+	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
+	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )
 
 require (
 	cosmossdk.io/api v1.0.0
-	cosmossdk.io/client/v2 v2.10.0-beta.4
+	cosmossdk.io/client/v2 v2.11.0
 	cosmossdk.io/collections v1.4.0
 	cosmossdk.io/core v1.1.0
 	cosmossdk.io/errors v1.1.0
-	cosmossdk.io/log/v2 v2.0.1
-	cosmossdk.io/store v1.10.0-rc.2.0.20260213183303-059defddaf30
+	cosmossdk.io/log/v2 v2.1.0
+	github.com/cosmos/cosmos-sdk/store/v2 v2.0.0
 	cosmossdk.io/tools/confix v0.1.2
-	github.com/cometbft/cometbft v0.39.0-beta.2
+	github.com/cometbft/cometbft v0.39.4
 	github.com/cosmos/cosmos-db v1.1.3
 	github.com/cosmos/cosmos-proto v1.0.0-beta.5
-	github.com/cosmos/cosmos-sdk v0.54.0-rc.1.0.20260213183303-059defddaf30
+	github.com/cosmos/cosmos-sdk v0.54.4
 	github.com/cosmos/gogoproto v1.7.2
 	github.com/golang/protobuf v1.5.4
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
@@ -28,8 +29,8 @@ require (
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.40.0
 	go.opentelemetry.io/otel/metric v1.40.0
-	google.golang.org/genproto/googleapis/api v0.0.0-20260209200024-4cfbd4190f57
-	google.golang.org/grpc v1.79.1
+	google.golang.org/genproto/googleapis/api v0.0.0-20260511170946-3700d4141b60
+	google.golang.org/grpc v1.82.1
 )
 
 require (

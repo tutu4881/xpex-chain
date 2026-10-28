@@ -112,7 +112,6 @@ func newPersistenceTestApp(t *testing.T, dataDir string, loadLatest bool) (*Exam
 	app := NewExampleApp(
 		log.NewNopLogger(),
 		db,
-		nil,
 		loadLatest,
 		appOpts,
 		baseapp.SetChainID("xpex-1"),

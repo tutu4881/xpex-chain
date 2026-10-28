@@ -4,8 +4,8 @@ import (
 	"os"
 
 	dbm "github.com/cosmos/cosmos-db"
-	"github.com/tutu787878/xpex-chain"
 	"github.com/spf13/cobra"
+	"github.com/tutu787878/xpex-chain"
 
 	"cosmossdk.io/log/v2"
 
@@ -24,7 +24,7 @@ import (
 // main function.
 func NewRootCmd() *cobra.Command {
 	// we "pre"-instantiate the application for getting the injected/configured encoding configuration
-	tempApp := example.NewExampleApp(log.NewNopLogger(), dbm.NewMemDB(), nil, true, simtestutil.NewAppOptionsWithFlagHome(example.DefaultNodeHome))
+	tempApp := example.NewExampleApp(log.NewNopLogger(), dbm.NewMemDB(), true, simtestutil.NewAppOptionsWithFlagHome(example.DefaultNodeHome))
 	encodingConfig := example.EncodingConfig{
 		InterfaceRegistry: tempApp.InterfaceRegistry(),
 		Codec:             tempApp.AppCodec(),

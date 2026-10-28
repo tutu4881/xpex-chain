@@ -1,18 +1,15 @@
-FROM golang:1.25-alpine AS build
+FROM golang:1.26-alpine AS build
 
 RUN apk add --no-cache make git libc-dev bash gcc linux-headers
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
-RUN go mod download
-
 COPY . .
 
-# The committed go.sum is missing entries for x/upgrade's dependencies
-# (go-getter, go-cleanhttp, ...). `go mod tidy` regenerates go.mod/go.sum inside
-# the build; versions are unchanged (minimal version selection), only missing
-# requirements/hashes are added. TODO: commit the tidied go.mod/go.sum.
+# go.mod pins cosmos-sdk v0.54.4 / CometBFT v0.39.4, but the committed go.sum and the
+# indirect requirements still come from the earlier pre-release. `go mod tidy` resolves
+# and verifies them (against sum.golang.org) inside the build.
+# TODO: commit the tidied go.mod/go.sum once a build machine with module access is available.
 RUN go mod tidy
 
 RUN go build -o /xpexd ./exampled

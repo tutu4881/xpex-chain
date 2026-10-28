@@ -4,6 +4,12 @@ All notable changes to this repository are tracked here for agent context.
 
 ## [Unreleased]
 
+### Changed
+
+- Moved from the Cosmos SDK v0.54.0-rc.1 pre-release (Feb 2026) to the stable v0.54.4, CometBFT v0.39.0-beta.2 to v0.39.4, and the store module to its new path `github.com/cosmos/cosmos-sdk/store/v2`. The app constructor no longer takes a trace writer (removed in v0.54). This is the base for adding IBC (ibc-go v11 targets SDK v0.54 / CometBFT v0.39).
+- Store markers keep the authz, feegrant and evidence stores non-empty: an empty IAVL store could not be loaded at any version, which broke every REST query and node restarts.
+
+
 ### Docs Sync Fixes
 
 - Fixed `git diff --quiet` in both sync workflows — it missed untracked files (new tutorial pages would silently skip sync). Replaced with `git status --porcelain <dir>` which catches new, modified, and deleted files.
