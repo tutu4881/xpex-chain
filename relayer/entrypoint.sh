@@ -22,6 +22,10 @@ CP_GRPC="${CP_GRPC:-https://grpc.testnet.osmosis.zone:443}"
 CP_PREFIX="${CP_PREFIX:-osmo}"
 CP_DENOM="${CP_DENOM:-uosmo}"
 CP_GAS_PRICE="${CP_GAS_PRICE:-0.025}"
+# Public Osmosis nodes do not keep block results, so events come over the websocket (push), not by polling.
+CP_WS="${CP_WS:-wss://rpc.testnet.osmosis.zone/websocket}"
+# Hermes logs a line per client it scans on a busy chain like Osmosis (thousands); warn keeps the log usable.
+LOG_LEVEL="${LOG_LEVEL:-warn}"
 RELAYER_CREATE_CHANNEL="${RELAYER_CREATE_CHANNEL:-1}"
 
 if [ -z "${RELAYER_MNEMONIC:-}" ]; then
@@ -35,7 +39,7 @@ CONFIG="$HOME/.hermes/config.toml"
 
 cat > "$CONFIG" <<TOML
 [global]
-log_level = 'info'
+log_level = '${LOG_LEVEL}'
 
 [mode.clients]
 enabled = true
@@ -93,7 +97,7 @@ id = '${CP_CHAIN_ID}'
 type = 'CosmosSdk'
 rpc_addr = '${CP_RPC}'
 grpc_addr = '${CP_GRPC}'
-event_source = { mode = 'pull', interval = '2s' }
+event_source = { mode = 'push', url = '${CP_WS}', batch_delay = '500ms' }
 rpc_timeout = '20s'
 trusted_node = false
 account_prefix = '${CP_PREFIX}'
