@@ -10,4 +10,7 @@ Setup:
    OSMO on `osmo1...` from https://faucet.testnet.osmosis.zone. The log prints both addresses at start.
 4. Redeploy: the channel is created, then Hermes keeps relaying.
 
-For Osmosis mainnet set `CP_CHAIN_ID=osmosis-1`, `CP_RPC`, `CP_GRPC` and fund the osmo address with real OSMO.
+For Osmosis mainnet set `CP_CHAIN_ID=osmosis-1`, `CP_RPC=https://rpc.osmosis.zone`,
+`CP_GRPC=https://grpc.osmosis.zone:443`, `CP_WS=wss://rpc.osmosis.zone/websocket` and fund the osmo address with
+real OSMO. Hermes relays only the one transfer channel to the counterparty (found through `XPEX_REST`), so it
+never scans the thousands of other channels on Osmosis.
