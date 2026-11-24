@@ -19,6 +19,9 @@
 #                           (e.g. the substitute on the counterparty). The channel's own clients and XPEX's
 #                           substitutes are found by themselves.
 #   RELAYER_UPDATE_EVERY    seconds between the explicit client updates (default 21600 = 6 h)
+#   RELAYER_NEW_CHANNEL     "xpex-client:counterparty-client" (e.g. 07-tendermint-2:07-tendermint-3778):
+#                           open a new connection + transfer channel on these two EXISTING clients when no
+#                           channel with an Active client exists (the old one's clients expired). Idempotent.
 #
 # Hermes only relays the one transfer channel between the two chains (packet filter on both sides):
 # a big counterparty like Osmosis mainnet has thousands of channels, and scanning them all would
@@ -167,12 +170,44 @@ find_channel() {
   for ch in $list; do
     a="${ch%%:*}"
     cid="$(curl -fsS --max-time 20 "$XPEX_REST/ibc/core/channel/v1/channels/$a/ports/transfer/client_state" 2>/dev/null       | jq -r '.identified_client_state.client_state.chain_id' 2>/dev/null)"
-    [ "$cid" = "$CP_CHAIN_ID" ] && echo "$ch"
+    [ "$cid" = "$CP_CHAIN_ID" ] || continue
+    cl="$(curl -fsS --max-time 20 "$XPEX_REST/ibc/core/channel/v1/channels/$a/ports/transfer/client_state" 2>/dev/null       | jq -r '.identified_client_state.client_id // empty' 2>/dev/null)"
+    st="$(curl -fsS --max-time 20 "$XPEX_REST/ibc/core/client/v1/client_status/$cl" 2>/dev/null | jq -r '.status // empty' 2>/dev/null)"
+    [ "$st" = "Active" ] && echo "$ch"
   done | tail -n1
 }
 
+# New connection + channel on two existing clients (RELAYER_NEW_CHANNEL="xpex-client:cp-client").
+open_new_channel() {
+  local xc="${RELAYER_NEW_CHANNEL%%:*}" cc="${RELAYER_NEW_CHANNEL##*:}" conn out
+  echo "NEW CHANNEL: on clients $XPEX_CHAIN_ID $xc <-> $CP_CHAIN_ID $cc"
+  # reuse an OPEN connection on that client if a previous run got that far
+  for c in $(curl -fsS --max-time 20 "$XPEX_REST/ibc/core/connection/v1/client_connections/$xc" 2>/dev/null | jq -r '.connection_paths[]?' 2>/dev/null); do
+    [ "$(curl -fsS --max-time 20 "$XPEX_REST/ibc/core/connection/v1/connections/$c" 2>/dev/null | jq -r '.connection.state // empty')" = "STATE_OPEN" ] && conn="$c"
+  done
+  if [ -z "${conn:-}" ]; then
+    out="$(hermes --json create connection --a-chain "$XPEX_CHAIN_ID" --a-client "$xc" --b-client "$cc" 2>&1)"
+    sleep 10
+    for c in $(curl -fsS --max-time 20 "$XPEX_REST/ibc/core/connection/v1/client_connections/$xc" 2>/dev/null | jq -r '.connection_paths[]?' 2>/dev/null); do
+      [ "$(curl -fsS --max-time 20 "$XPEX_REST/ibc/core/connection/v1/connections/$c" 2>/dev/null | jq -r '.connection.state // empty')" = "STATE_OPEN" ] && conn="$c"
+    done
+    [ -n "${conn:-}" ] || { echo "NEW CHANNEL: connection failed: $(printf '%s' "$out" | tail -n 3 | cut -c1-400)"; return 1; }
+    echo "NEW CHANNEL: connection $conn open"
+  else
+    echo "NEW CHANNEL: reusing connection $conn"
+  fi
+  out="$(hermes --json create channel --a-chain "$XPEX_CHAIN_ID" --a-connection "$conn" --a-port transfer --b-port transfer --order unordered --channel-version ics20-1 2>&1)"
+  sleep 10
+  PAIR="$(find_channel)"
+  if [ -n "$PAIR" ]; then echo "NEW CHANNEL: open, transfer/${PAIR%%:*} ($XPEX_CHAIN_ID) <-> transfer/${PAIR##*:} ($CP_CHAIN_ID)"
+  else echo "NEW CHANNEL: channel failed: $(printf '%s' "$out" | tail -n 3 | cut -c1-400)"; return 1; fi
+}
+
 PAIR="$(find_channel)"
-if [ -z "$PAIR" ] && [ "$RELAYER_CREATE_CHANNEL" = "1" ]; then
+if [ -z "$PAIR" ] && [ -n "${RELAYER_NEW_CHANNEL:-}" ]; then
+  open_new_channel || echo "WARN: new channel not opened; redeploy to retry."
+fi
+if [ -z "$PAIR" ] && [ -z "${RELAYER_NEW_CHANNEL:-}" ] && [ "$RELAYER_CREATE_CHANNEL" = "1" ]; then
   echo "No transfer channel between $XPEX_CHAIN_ID and $CP_CHAIN_ID yet: creating client, connection and channel..."
   if hermes create channel --a-chain "$XPEX_CHAIN_ID" --b-chain "$CP_CHAIN_ID"       --a-port transfer --b-port transfer --new-client-connection --yes; then
     echo "Channel created."
