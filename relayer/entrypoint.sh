@@ -12,6 +12,13 @@
 #   RELAYER_CREATE_CHANNEL  1 = create a transfer channel (client + connection + channel) once,
 #                           if none exists yet between the two chains. Default 1.
 #   XPEX_REST               default https://api.xpexpex.com; used to find the channel to the counterparty
+#   RELAYER_SUBSTITUTE      1 = create fresh "substitute" light clients on both chains (for MsgRecoverClient,
+#                           when the channel's clients have expired). Skipped if XPEX already has an Active
+#                           client of the counterparty besides the channel's own. Remove it afterwards.
+#   RELAYER_UPDATE_CLIENTS  extra clients to keep fresh, "chain:client-id" separated by spaces
+#                           (e.g. the substitute on the counterparty). The channel's own clients and XPEX's
+#                           substitutes are found by themselves.
+#   RELAYER_UPDATE_EVERY    seconds between the explicit client updates (default 21600 = 6 h)
 #
 # Hermes only relays the one transfer channel between the two chains (packet filter on both sides):
 # a big counterparty like Osmosis mainnet has thousands of channels, and scanning them all would
@@ -184,6 +191,58 @@ XPEX_CH="${PAIR%%:*}"
 CP_CH="${PAIR##*:}"
 echo "Relaying transfer/$XPEX_CH ($XPEX_CHAIN_ID) <-> transfer/$CP_CH ($CP_CHAIN_ID) only."
 write_config "$XPEX_CH" "$CP_CH"
+
+# The channel's own light clients: XPEX's client of the counterparty and the counterparty's client of XPEX.
+XPEX_CLIENT="$(curl -fsS --max-time 20 "$XPEX_REST/ibc/core/channel/v1/channels/$XPEX_CH/ports/transfer/client_state" 2>/dev/null | jq -r '.identified_client_state.client_id // empty')"
+XPEX_CONN="$(curl -fsS --max-time 20 "$XPEX_REST/ibc/core/channel/v1/channels/$XPEX_CH/ports/transfer" 2>/dev/null | jq -r '.channel.connection_hops[0] // empty')"
+CP_CLIENT="$(curl -fsS --max-time 20 "$XPEX_REST/ibc/core/connection/v1/connections/$XPEX_CONN" 2>/dev/null | jq -r '.connection.counterparty.client_id // empty')"
+echo "Channel clients: $XPEX_CHAIN_ID $XPEX_CLIENT, $CP_CHAIN_ID $CP_CLIENT"
+
+# XPEX's Active clients of the counterparty other than the channel's own (substitutes for a recovery).
+xpex_substitutes() {
+  curl -fsS --max-time 20 "$XPEX_REST/ibc/core/client/v1/client_states?pagination.limit=200" 2>/dev/null \
+    | jq -r --arg cp "$CP_CHAIN_ID" --arg own "$XPEX_CLIENT" '.client_states[] | select(.client_state.chain_id == $cp and .client_id != $own) | .client_id' 2>/dev/null \
+    | while read -r id; do
+        st="$(curl -fsS --max-time 20 "$XPEX_REST/ibc/core/client/v1/client_status/$id" 2>/dev/null | jq -r '.status // empty')"
+        [ "$st" = "Active" ] && echo "$id"
+      done
+}
+
+# Fresh substitute clients for MsgRecoverClient. Same parameters as the originals: trust level 2/3 and
+# max clock drift (clock_drift + clock_drift + max_block_time) come from this config, the trusting period
+# from the chain's unbonding time, exactly as when the channel was made.
+if [ "${RELAYER_SUBSTITUTE:-0}" = "1" ]; then
+  if [ -n "$(xpex_substitutes)" ]; then
+    echo "SUBSTITUTE: XPEX already has an Active client of $CP_CHAIN_ID ($(xpex_substitutes | tr '\n' ' ')); not creating more."
+  else
+    for host in "$XPEX_CHAIN_ID" "$CP_CHAIN_ID"; do
+      ref="$CP_CHAIN_ID"; [ "$host" = "$CP_CHAIN_ID" ] && ref="$XPEX_CHAIN_ID"
+      out="$(hermes --json create client --host-chain "$host" --reference-chain "$ref" 2>&1)"
+      id="$(printf '%s' "$out" | grep -o '07-tendermint-[0-9]*' | tail -n1)"
+      if [ -n "$id" ]; then echo "SUBSTITUTE: created $id on $host (tracks $ref)"; else echo "SUBSTITUTE: failed on $host: $(printf '%s' "$out" | tail -n 3)"; fi
+    done
+  fi
+fi
+
+# Keep the light clients fresh on a timer, independent of Hermes' own refresh: an expired client stops
+# the channel and needs governance to recover. Updates of an expired client fail (harmless, logged).
+(
+  sleep 120
+  while true; do
+    list="$XPEX_CHAIN_ID:$XPEX_CLIENT $CP_CHAIN_ID:$CP_CLIENT ${RELAYER_UPDATE_CLIENTS:-}"
+    for id in $(xpex_substitutes); do list="$list $XPEX_CHAIN_ID:$id"; done
+    for pair in $list; do
+      chain="${pair%%:*}"; client="${pair##*:}"
+      [ -z "$client" ] || [ "$client" = "$chain" ] && continue
+      if hermes update client --host-chain "$chain" --client "$client" >/tmp/upd.log 2>&1; then
+        echo "UPDATE: $chain $client ok"
+      else
+        echo "UPDATE: $chain $client failed: $(grep -io 'expired\|error.*' /tmp/upd.log | head -n1 | cut -c1-160)"
+      fi
+    done
+    sleep "${RELAYER_UPDATE_EVERY:-21600}"
+  done
+) &
 
 # Optional one-off end-to-end test (RELAYER_TEST_TRANSFER=1): send 0.1 XPX from the relayer wallet to its own
 # address on the counterparty, then 0.05 of the received voucher back. Remove the variable afterwards.
